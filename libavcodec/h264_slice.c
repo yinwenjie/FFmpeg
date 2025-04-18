@@ -2763,6 +2763,7 @@ finish:
 int ff_h264_execute_decode_slices(H264Context *h)
 {
     AVCodecContext *const avctx = h->avctx;
+    av_log(avctx, AV_LOG_DEBUG, "%s start.\n", __FUNCTION__);
     H264SliceContext *sl;
     int context_count = h->nb_slice_ctx_queued;
     int ret = 0;
@@ -2832,6 +2833,7 @@ int ff_h264_execute_decode_slices(H264Context *h)
     }
 
 finish:
+    av_log(avctx, AV_LOG_DEBUG, "%s end.\n", __FUNCTION__);
     h->nb_slice_ctx_queued = 0;
     return ret;
 }

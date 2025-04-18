@@ -385,6 +385,7 @@ static int hevc_parse_nal_header(H2645NAL *nal, void *logctx)
 
 static int h264_parse_nal_header(H2645NAL *nal, void *logctx)
 {
+    av_log(logctx, AV_LOG_DEBUG, "%s end.\n", __FUNCTION__);
     GetBitContext *gb = &nal->gb;
 
     if (get_bits1(gb) != 0)
@@ -466,6 +467,7 @@ int ff_h2645_packet_split(H2645Packet *pkt, const uint8_t *buf, int length,
                           void *logctx, int nal_length_size,
                           enum AVCodecID codec_id, int flags)
 {
+    av_log(logctx, AV_LOG_DEBUG, "%s start.\n", __FUNCTION__);
     GetByteContext bc;
     int consumed, ret = 0;
     int next_avc = (flags & H2645_FLAG_IS_NALFF) ? 0 : length;
@@ -595,7 +597,7 @@ int ff_h2645_packet_split(H2645Packet *pkt, const uint8_t *buf, int length,
 
         pkt->nb_nals++;
     }
-
+    av_log(logctx, AV_LOG_DEBUG, "%s end.\n", __FUNCTION__);
     return 0;
 }
 
