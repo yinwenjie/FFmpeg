@@ -284,6 +284,7 @@ void ff_h264_ps_uninit(H264ParamSets *ps)
 int ff_h264_decode_seq_parameter_set(GetBitContext *gb, AVCodecContext *avctx,
                                      H264ParamSets *ps, int ignore_truncation)
 {
+    av_log(avctx, AV_LOG_DEBUG, "%s start.\n", __FUNCTION__);
     int profile_idc, level_idc, constraint_set_flags = 0;
     unsigned int sps_id;
     int i, log2_max_frame_num_minus4;
@@ -584,6 +585,7 @@ int ff_h264_decode_seq_parameter_set(GetBitContext *gb, AVCodecContext *avctx,
         ps->sps_list[sps_id] = sps;
     }
 
+    av_log(avctx, AV_LOG_DEBUG, "%s end.\n", __FUNCTION__);
     return 0;
 
 fail:
@@ -696,6 +698,7 @@ static void pps_free(AVRefStructOpaque unused, void *obj)
 int ff_h264_decode_picture_parameter_set(GetBitContext *gb, AVCodecContext *avctx,
                                          H264ParamSets *ps, int bit_length)
 {
+    av_log(avctx, AV_LOG_DEBUG, "%s start.\n", __FUNCTION__);
     const SPS *sps;
     unsigned int pps_id = get_ue_golomb(gb);
     PPS *pps;
@@ -836,6 +839,7 @@ int ff_h264_decode_picture_parameter_set(GetBitContext *gb, AVCodecContext *avct
 
     remove_pps(ps, pps_id);
     ps->pps_list[pps_id] = pps;
+    av_log(avctx, AV_LOG_DEBUG, "%s end.\n", __FUNCTION__);
 
     return 0;
 
