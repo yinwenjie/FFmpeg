@@ -1,0 +1,76 @@
+# 定时把官方 FFmpeg/FFmpeg 的 master 快进同步到本 fork 的 master。
+#
+# 这个文件只放在 fork 的独立分支上（并把该分支设为默认分支），
+# master 本身不含任何额外提交，保持为 upstream 的纯镜像，才能一直快进。
+#
+# 安全约束：
+#   - 只做快进（fast-forward）。如果 fork 的 master 上出现了 upstream
+#     没有的提交，本任务直接失败报警，不会合并、也不会强推覆盖。
+#   - 不改写历史，课程仓库里固定的旧提交始终可以取到。
+
+name: Sync master from upstream
+
+on:
+  schedule:
+    # 每天 UTC 18:17（北京时间次日 02:17）。避开整点，减少排队。
+    - cron: '17 18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+env:
+  UPSTREAM: FFmpeg/FFmpeg
+  BRANCH: master
+
+jobs:
+  sync:
+    # 防止别人再 fork 本仓库时也跟着跑
+    if: github.repository == 'yinwenjie/FFmpeg'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fast-forward master to upstream
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          fork_sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/$BRANCH" --jq .sha)
+          upstream_sha=$(gh api "repos/$UPSTREAM/commits/$BRANCH" --jq .sha)
+          echo "fork     $BRANCH: $fork_sha"
+          echo "upstream $BRANCH: $upstream_sha"
+
+          if [ "$fork_sha" = "$upstream_sha" ]; then
+            echo "已经是最新，无需同步。" | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # 在 upstream 仓库里比较：fork 的提交必须是 upstream master 的祖先，
+          # 也就是 status 为 ahead（upstream 领先）。fork 提交不在 upstream 里时接口返回 404。
+          if ! status=$(gh api "repos/$UPSTREAM/compare/$fork_sha...$upstream_sha" --jq '.status + " " + (.ahead_by|tostring)'); then
+            echo "::error::fork 的 $BRANCH ($fork_sha) 不在 upstream 历史中，已与 upstream 分叉，请人工处理。"
+            exit 1
+          fi
+          read -r state ahead <<<"$status"
+          if [ "$state" != "ahead" ]; then
+            echo "::error::无法快进：compare 状态为 '$state'。fork 的 $BRANCH 上可能有 upstream 没有的提交，请人工处理。"
+            exit 1
+          fi
+
+          merge_type=$(gh api -X POST "repos/$GITHUB_REPOSITORY/merge-upstream" -f branch="$BRANCH" --jq .merge_type)
+          if [ "$merge_type" != "fast-forward" ]; then
+            echo "::error::merge-upstream 返回 '$merge_type'，不是预期的 fast-forward，请检查 $BRANCH。"
+            exit 1
+          fi
+
+          {
+            echo "### 已同步 upstream $BRANCH"
+            echo ""
+            echo "- 新增提交：$ahead 个"
+            echo "- \`${fork_sha:0:12}\` → \`${upstream_sha:0:12}\`"
+            echo "- [查看差异](https://github.com/$UPSTREAM/compare/$fork_sha...$upstream_sha)"
+          } >> "$GITHUB_STEP_SUMMARY"
