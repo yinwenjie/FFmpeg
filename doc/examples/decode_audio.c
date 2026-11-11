@@ -196,6 +196,9 @@ int main(int argc, char **argv)
     /* decode until eof */
     data      = inbuf;
     data_size = fread(inbuf, 1, AUDIO_INBUF_SIZE, f);
+    /* the padding after the end of the data has to be zeroed (this ensures
+     * that no overreading happens for damaged MPEG streams) */
+    memset(data + data_size, 0, AV_INPUT_BUFFER_PADDING_SIZE);
 
     while (data_size > 0) {
         ret = av_parser_parse2(parser, c, &pkt->data, &pkt->size,
@@ -218,6 +221,7 @@ int main(int argc, char **argv)
                         AUDIO_INBUF_SIZE - data_size, f);
             if (len > 0)
                 data_size += len;
+            memset(data + data_size, 0, AV_INPUT_BUFFER_PADDING_SIZE);
         }
     }
 
