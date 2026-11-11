@@ -158,9 +158,10 @@ int main(int argc, char **argv)
             continue;
         }
 
+        log_packet(ifmt_ctx, pkt, "in");
+
         pkt->stream_index = stream_mapping[pkt->stream_index];
         out_stream = ofmt_ctx->streams[pkt->stream_index];
-        log_packet(ifmt_ctx, pkt, "in");
 
         /* copy packet */
         av_packet_rescale_ts(pkt, in_stream->time_base, out_stream->time_base);
