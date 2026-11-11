@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <libavutil/channel_layout.h>
 #include <libavutil/frame.h>
 #include <libavutil/mem.h>
 
@@ -117,7 +118,7 @@ int main(int argc, char **argv)
     AVPacket *pkt;
     AVFrame *decoded_frame = NULL;
     enum AVSampleFormat sfmt;
-    int n_channels = 0;
+    char ch_layout[64];
     const char *fmt;
 
     if (argc <= 2) {
@@ -210,23 +211,20 @@ int main(int argc, char **argv)
     decode(c, pkt, decoded_frame, outfile);
 
     /* print output pcm infomations, because there have no metadata of pcm */
-    sfmt = c->sample_fmt;
+    /* decode() interleaves the samples of all channels, so the output file
+     * is in the packed variant of the planar format the decoder produced */
+    sfmt = av_get_packed_sample_fmt(c->sample_fmt);
 
-    if (av_sample_fmt_is_planar(sfmt)) {
-        const char *packed = av_get_sample_fmt_name(sfmt);
-        printf("Warning: the sample format the decoder produced is planar "
-               "(%s). This example will output the first channel only.\n",
-               packed ? packed : "?");
-        sfmt = av_get_packed_sample_fmt(sfmt);
-    }
-
-    n_channels = c->ch_layout.nb_channels;
     if ((ret = get_format_from_sample_fmt(&fmt, sfmt)) < 0)
         goto end;
 
+    if ((ret = av_channel_layout_describe(&c->ch_layout, ch_layout,
+                                          sizeof(ch_layout))) < 0)
+        goto end;
+
     printf("Play the output audio file with the command:\n"
-           "ffplay -f %s -ac %d -ar %d %s\n",
-           fmt, n_channels, c->sample_rate,
+           "ffplay -f %s -ch_layout %s -sample_rate %d %s\n",
+           fmt, ch_layout, c->sample_rate,
            outfilename);
 end:
     fclose(outfile);
