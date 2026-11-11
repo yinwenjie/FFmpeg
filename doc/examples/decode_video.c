@@ -45,7 +45,7 @@ static void pgm_save(unsigned char *buf, int wrap, int xsize, int ysize,
     f = fopen(filename, "wb");
     if (!f) {
         fprintf(stderr, "Could not open %s\n", filename);
-        return;
+        exit(1);
     }
     fprintf(f, "P5\n%d %d\n%d\n", xsize, ysize, 255);
     for (i = 0; i < ysize; i++)
@@ -159,8 +159,10 @@ int main(int argc, char **argv)
     do {
         /* read raw data from the input file */
         data_size = fread(inbuf, 1, INBUF_SIZE, f);
-        if (ferror(f))
-            break;
+        if (ferror(f)) {
+            fprintf(stderr, "Error while reading %s\n", filename);
+            exit(1);
+        }
         eof = !data_size;
 
         /* use the parser to split the data into frames */
