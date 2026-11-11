@@ -73,12 +73,12 @@ int main(int argc, char **argv)
     }
 
     if ((ret = avformat_open_input(&ifmt_ctx, in_filename, 0, 0)) < 0) {
-        fprintf(stderr, "Could not open input file '%s'", in_filename);
+        fprintf(stderr, "Could not open input file '%s'\n", in_filename);
         goto end;
     }
 
     if ((ret = avformat_find_stream_info(ifmt_ctx, 0)) < 0) {
-        fprintf(stderr, "Failed to retrieve input stream information");
+        fprintf(stderr, "Failed to retrieve input stream information\n");
         goto end;
     }
 
@@ -133,7 +133,7 @@ int main(int argc, char **argv)
     if (!(ofmt->flags & AVFMT_NOFILE)) {
         ret = avio_open(&ofmt_ctx->pb, out_filename, AVIO_FLAG_WRITE);
         if (ret < 0) {
-            fprintf(stderr, "Could not open output file '%s'", out_filename);
+            fprintf(stderr, "Could not open output file '%s'\n", out_filename);
             goto end;
         }
     }
