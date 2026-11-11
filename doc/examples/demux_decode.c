@@ -182,6 +182,10 @@ static int open_codec_context(int *stream_idx,
             return ret;
         }
 
+        /* Inform the decoder about the timebase for the packet timestamps.
+         * This is highly recommended, but not mandatory. */
+        (*dec_ctx)->pkt_timebase = st->time_base;
+
         /* Init the decoders */
         if ((ret = avcodec_open2(*dec_ctx, dec, NULL)) < 0) {
             fprintf(stderr, "Failed to open %s codec\n",

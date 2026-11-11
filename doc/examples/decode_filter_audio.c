@@ -77,6 +77,10 @@ static int open_input_file(const char *filename)
         return AVERROR(ENOMEM);
     avcodec_parameters_to_context(dec_ctx, fmt_ctx->streams[audio_stream_index]->codecpar);
 
+    /* Inform the decoder about the timebase for the packet timestamps.
+     * This is highly recommended, but not mandatory. */
+    dec_ctx->pkt_timebase = fmt_ctx->streams[audio_stream_index]->time_base;
+
     /* init the audio decoder */
     if ((ret = avcodec_open2(dec_ctx, dec, NULL)) < 0) {
         av_log(NULL, AV_LOG_ERROR, "Cannot open audio decoder\n");
