@@ -45,12 +45,16 @@ int main (int argc, char **argv)
         return 1;
     }
 
-    if ((ret = avformat_open_input(&fmt_ctx, argv[1], NULL, NULL)))
-        return ret;
+    if ((ret = avformat_open_input(&fmt_ctx, argv[1], NULL, NULL)) < 0) {
+        av_log(NULL, AV_LOG_ERROR, "Cannot open '%s': %s\n",
+               argv[1], av_err2str(ret));
+        return 1;
+    }
 
     if ((ret = avformat_find_stream_info(fmt_ctx, NULL)) < 0) {
         av_log(NULL, AV_LOG_ERROR, "Cannot find stream information\n");
-        return ret;
+        avformat_close_input(&fmt_ctx);
+        return 1;
     }
 
     while ((tag = av_dict_iterate(fmt_ctx->metadata, tag)))
