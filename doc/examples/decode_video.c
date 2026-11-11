@@ -24,8 +24,8 @@
  * @file libavcodec video decoding API usage example
  * @example decode_video.c *
  *
- * Read from an MPEG1 video file, decode frames, and generate PGM images as
- * output.
+ * Read a raw MPEG-1 video stream from a file, decode the frames, and write
+ * each of them to a PGM image.
  */
 
 #include <stdio.h>
@@ -101,8 +101,12 @@ int main(int argc, char **argv)
     AVPacket *pkt;
 
     if (argc <= 2) {
-        fprintf(stderr, "Usage: %s <input file> <output file>\n"
-                "And check your input file is encoded by mpeg1video please.\n", argv[0]);
+        fprintf(stderr, "Usage: %s <input file> <output prefix>\n"
+                "The input file must contain a raw MPEG-1 video stream, not a container\n"
+                "such as MPEG-PS, AVI or MP4. It can be created with a command like\n"
+                "  ffmpeg -i INPUT -c:v mpeg1video -f mpeg1video OUTPUT\n"
+                "Every decoded frame is written to the PGM image\n"
+                "<output prefix>-<frame number>.\n", argv[0]);
         exit(1);
     }
     filename    = argv[1];
