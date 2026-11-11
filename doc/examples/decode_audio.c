@@ -170,18 +170,17 @@ int main(int argc, char **argv)
         exit(1);
     }
 
+    decoded_frame = av_frame_alloc();
+    if (!decoded_frame) {
+        fprintf(stderr, "Could not allocate audio frame\n");
+        exit(1);
+    }
+
     /* decode until eof */
     data      = inbuf;
     data_size = fread(inbuf, 1, AUDIO_INBUF_SIZE, f);
 
     while (data_size > 0) {
-        if (!decoded_frame) {
-            if (!(decoded_frame = av_frame_alloc())) {
-                fprintf(stderr, "Could not allocate audio frame\n");
-                exit(1);
-            }
-        }
-
         ret = av_parser_parse2(parser, c, &pkt->data, &pkt->size,
                                data, data_size,
                                AV_NOPTS_VALUE, AV_NOPTS_VALUE, 0);
@@ -209,6 +208,11 @@ int main(int argc, char **argv)
     pkt->data = NULL;
     pkt->size = 0;
     decode(c, pkt, decoded_frame, outfile);
+
+    if (!c->frame_num) {
+        fprintf(stderr, "No audio frame could be decoded from %s\n", filename);
+        exit(1);
+    }
 
     /* print output pcm infomations, because there have no metadata of pcm */
     /* decode() interleaves the samples of all channels, so the output file
