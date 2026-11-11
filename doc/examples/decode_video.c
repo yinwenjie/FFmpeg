@@ -103,7 +103,7 @@ int main(int argc, char **argv)
     if (argc <= 2) {
         fprintf(stderr, "Usage: %s <input file> <output file>\n"
                 "And check your input file is encoded by mpeg1video please.\n", argv[0]);
-        exit(0);
+        exit(1);
     }
     filename    = argv[1];
     outfilename = argv[2];

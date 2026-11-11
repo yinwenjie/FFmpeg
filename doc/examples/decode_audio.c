@@ -123,7 +123,7 @@ int main(int argc, char **argv)
 
     if (argc <= 2) {
         fprintf(stderr, "Usage: %s <input file> <output file>\n", argv[0]);
-        exit(0);
+        exit(1);
     }
     filename    = argv[1];
     outfilename = argv[2];

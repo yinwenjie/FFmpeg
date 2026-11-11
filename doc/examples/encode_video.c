@@ -79,7 +79,7 @@ int main(int argc, char **argv)
 
     if (argc <= 2) {
         fprintf(stderr, "Usage: %s <output file> <codec name>\n", argv[0]);
-        exit(0);
+        exit(1);
     }
     filename = argv[1];
     codec_name = argv[2];
