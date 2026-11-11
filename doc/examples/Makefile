@@ -1,4 +1,4 @@
-EXAMPLES-$(CONFIG_AVIO_HTTP_SERVE_FILES)     += avio_http_serve_files
+EXAMPLES-$(CONFIG_AVIO_HTTP_SERVE_FILES_EXAMPLE) += avio_http_serve_files
 EXAMPLES-$(CONFIG_AVIO_LIST_DIR_EXAMPLE)     += avio_list_dir
 EXAMPLES-$(CONFIG_AVIO_READ_CALLBACK_EXAMPLE) += avio_read_callback
 EXAMPLES-$(CONFIG_DECODE_AUDIO_EXAMPLE)      += decode_audio
