@@ -84,10 +84,9 @@ int main(int argc, char **argv)
 
     av_dump_format(ifmt_ctx, 0, in_filename, 0);
 
-    avformat_alloc_output_context2(&ofmt_ctx, NULL, NULL, out_filename);
-    if (!ofmt_ctx) {
+    ret = avformat_alloc_output_context2(&ofmt_ctx, NULL, NULL, out_filename);
+    if (ret < 0) {
         fprintf(stderr, "Could not create output context\n");
-        ret = AVERROR_UNKNOWN;
         goto end;
     }
 
@@ -123,7 +122,7 @@ int main(int argc, char **argv)
         out_stream = avformat_new_stream(ofmt_ctx, NULL);
         if (!out_stream) {
             fprintf(stderr, "Failed allocating output stream\n");
-            ret = AVERROR_UNKNOWN;
+            ret = AVERROR(ENOMEM);
             goto end;
         }
 

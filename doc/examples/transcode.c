@@ -136,10 +136,10 @@ static int open_output_file(const char *filename)
     unsigned int i;
 
     ofmt_ctx = NULL;
-    avformat_alloc_output_context2(&ofmt_ctx, NULL, NULL, filename);
-    if (!ofmt_ctx) {
+    ret = avformat_alloc_output_context2(&ofmt_ctx, NULL, NULL, filename);
+    if (ret < 0) {
         av_log(NULL, AV_LOG_ERROR, "Could not create output context\n");
-        return AVERROR_UNKNOWN;
+        return ret;
     }
 
 
@@ -147,7 +147,7 @@ static int open_output_file(const char *filename)
         out_stream = avformat_new_stream(ofmt_ctx, NULL);
         if (!out_stream) {
             av_log(NULL, AV_LOG_ERROR, "Failed allocating output stream\n");
-            return AVERROR_UNKNOWN;
+            return AVERROR(ENOMEM);
         }
 
         in_stream = ifmt_ctx->streams[i];
