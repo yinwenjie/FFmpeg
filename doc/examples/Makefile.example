@@ -42,7 +42,6 @@ EXAMPLES=\
 OBJS=$(addsuffix .o,$(EXAMPLES))
 
 # the following examples make explicit use of the math library
-avcodec:           LDLIBS += -lm
 encode_audio:      LDLIBS += -lm
 filter_audio:      LDLIBS += -lm
 mux:               LDLIBS += -lm
