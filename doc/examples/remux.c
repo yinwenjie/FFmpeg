@@ -91,6 +91,12 @@ int main(int argc, char **argv)
         goto end;
     }
 
+    ret = av_dict_copy(&ofmt_ctx->metadata, ifmt_ctx->metadata, 0);
+    if (ret < 0) {
+        fprintf(stderr, "Failed to copy metadata\n");
+        goto end;
+    }
+
     stream_mapping_size = ifmt_ctx->nb_streams;
     stream_mapping = av_calloc(stream_mapping_size, sizeof(*stream_mapping));
     if (!stream_mapping) {
@@ -127,6 +133,13 @@ int main(int argc, char **argv)
             goto end;
         }
         out_stream->codecpar->codec_tag = 0;
+
+        ret = av_dict_copy(&out_stream->metadata, in_stream->metadata, 0);
+        if (ret < 0) {
+            fprintf(stderr, "Failed to copy stream metadata\n");
+            goto end;
+        }
+        out_stream->disposition = in_stream->disposition;
     }
     av_dump_format(ofmt_ctx, 0, out_filename, 1);
 
