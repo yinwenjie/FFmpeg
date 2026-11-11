@@ -220,6 +220,20 @@ int main(int argc, char **argv)
         exit(1);
     }
 
+    /* flush the parser: a size of 0 signals the end of the input, so that
+     * the parser returns the data it still holds */
+    do {
+        ret = av_parser_parse2(parser, c, &pkt->data, &pkt->size,
+                               NULL, 0, AV_NOPTS_VALUE, AV_NOPTS_VALUE, 0);
+        if (ret < 0) {
+            fprintf(stderr, "Error while parsing\n");
+            exit(1);
+        }
+
+        if (pkt->size)
+            decode(c, pkt, decoded_frame, outfile);
+    } while (pkt->size);
+
     /* flush the decoder */
     pkt->data = NULL;
     pkt->size = 0;
