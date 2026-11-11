@@ -204,10 +204,21 @@ int main(int argc, char **argv)
         }
     }
 
+    if (ferror(f)) {
+        fprintf(stderr, "Error while reading %s\n", filename);
+        exit(1);
+    }
+
     /* flush the decoder */
     pkt->data = NULL;
     pkt->size = 0;
     decode(c, pkt, decoded_frame, outfile);
+
+    /* fclose() writes what is still buffered, so it can fail as well */
+    if (ferror(outfile) || fclose(outfile) == EOF) {
+        fprintf(stderr, "Error while writing %s\n", outfilename);
+        exit(1);
+    }
 
     if (!c->frame_num) {
         fprintf(stderr, "No audio frame could be decoded from %s\n", filename);
@@ -231,7 +242,6 @@ int main(int argc, char **argv)
            fmt, ch_layout, c->sample_rate,
            outfilename);
 end:
-    fclose(outfile);
     fclose(f);
 
     avcodec_free_context(&c);
