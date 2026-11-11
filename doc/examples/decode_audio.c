@@ -24,8 +24,8 @@
  * @file libavcodec audio decoding API usage example
  * @example decode_audio.c
  *
- * Decode data from an MP2 input file and generate a raw audio file to
- * be played with ffplay.
+ * Read a raw MP2 (MPEG audio layer 2) stream from a file, decode it, and
+ * write the samples to a raw audio file to be played with ffplay.
  */
 
 #include <stdio.h>
@@ -133,7 +133,13 @@ int main(int argc, char **argv)
     const char *fmt;
 
     if (argc <= 2) {
-        fprintf(stderr, "Usage: %s <input file> <output file>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <input file> <output file>\n"
+                "The input file must contain a raw MP2 (MPEG audio layer 2) stream, not\n"
+                "a container such as MPEG-TS, Matroska or MP4. It can be created with\n"
+                "a command like\n"
+                "  ffmpeg -i INPUT -c:a mp2 OUTPUT.mp2\n"
+                "The decoded samples are written to the output file as raw PCM.\n",
+                argv[0]);
         exit(1);
     }
     filename    = argv[1];
