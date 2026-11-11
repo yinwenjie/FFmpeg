@@ -107,10 +107,13 @@ static int init_filters(const char *filters_descr)
 
     /* buffer video source: the decoded frames from the decoder will be inserted here. */
     snprintf(args, sizeof(args),
-            "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
+            "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d:"
+            "colorspace=%d:range=%d:alpha_mode=%d:chroma_location=%d",
             dec_ctx->width, dec_ctx->height, dec_ctx->pix_fmt,
             time_base.num, time_base.den,
-            dec_ctx->sample_aspect_ratio.num, dec_ctx->sample_aspect_ratio.den);
+            dec_ctx->sample_aspect_ratio.num, dec_ctx->sample_aspect_ratio.den,
+            dec_ctx->colorspace, dec_ctx->color_range, dec_ctx->alpha_mode,
+            dec_ctx->chroma_sample_location);
 
     ret = avfilter_graph_create_filter(&buffersrc_ctx, buffersrc, "in",
                                        args, NULL, filter_graph);
