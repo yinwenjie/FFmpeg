@@ -209,6 +209,10 @@ static int open_output_file(const char *filename)
             if (ofmt_ctx->oformat->flags & AVFMT_GLOBALHEADER)
                 enc_ctx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
+            /* The frames sent to the encoder carry a valid duration, which
+             * the encoder should pass on to the packets it outputs. */
+            enc_ctx->flags |= AV_CODEC_FLAG_FRAME_DURATION;
+
             /* Third parameter can be used to pass settings to encoder */
             ret = avcodec_open2(enc_ctx, encoder, NULL);
             if (ret < 0) {
@@ -475,9 +479,13 @@ static int encode_write_frame(unsigned int stream_index, int flush)
     /* encode filtered frame */
     av_packet_unref(enc_pkt);
 
-    if (filt_frame && filt_frame->pts != AV_NOPTS_VALUE)
-        filt_frame->pts = av_rescale_q(filt_frame->pts, filt_frame->time_base,
-                                       stream->enc_ctx->time_base);
+    if (filt_frame) {
+        if (filt_frame->pts != AV_NOPTS_VALUE)
+            filt_frame->pts = av_rescale_q(filt_frame->pts, filt_frame->time_base,
+                                           stream->enc_ctx->time_base);
+        filt_frame->duration = av_rescale_q(filt_frame->duration, filt_frame->time_base,
+                                            stream->enc_ctx->time_base);
+    }
 
     ret = avcodec_send_frame(stream->enc_ctx, filt_frame);
 
