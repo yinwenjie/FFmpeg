@@ -54,6 +54,7 @@ int main(int argc, char **argv)
     int stream_index = 0;
     int *stream_mapping = NULL;
     int stream_mapping_size = 0;
+    int64_t *next_dts = NULL;
 
     if (argc < 3) {
         printf("usage: %s input output\n"
@@ -98,7 +99,8 @@ int main(int argc, char **argv)
 
     stream_mapping_size = ifmt_ctx->nb_streams;
     stream_mapping = av_calloc(stream_mapping_size, sizeof(*stream_mapping));
-    if (!stream_mapping) {
+    next_dts       = av_calloc(stream_mapping_size, sizeof(*next_dts));
+    if (!stream_mapping || !next_dts) {
         ret = AVERROR(ENOMEM);
         goto end;
     }
@@ -118,6 +120,7 @@ int main(int argc, char **argv)
         }
 
         stream_mapping[i] = stream_index++;
+        next_dts[i]       = AV_NOPTS_VALUE;
 
         out_stream = avformat_new_stream(ofmt_ctx, NULL);
         if (!out_stream) {
@@ -158,6 +161,7 @@ int main(int argc, char **argv)
 
     while (1) {
         AVStream *in_stream, *out_stream;
+        int64_t *next;
 
         ret = av_read_frame(ifmt_ctx, pkt);
         if (ret < 0)
@@ -171,6 +175,21 @@ int main(int argc, char **argv)
         }
 
         log_packet(ifmt_ctx, pkt, "in");
+
+        /* Demuxers for formats that store a single timestamp per packet
+         * (e.g. Matroska) cannot tell the DTS of the first packets of a
+         * stream with reordered frames. Muxers need it, so estimate it from
+         * the first PTS and the reordering delay and continue counting from
+         * there until the demuxer provides it. */
+        next = &next_dts[pkt->stream_index];
+        if (pkt->dts == AV_NOPTS_VALUE && pkt->duration > 0) {
+            if (*next == AV_NOPTS_VALUE && pkt->pts != AV_NOPTS_VALUE)
+                *next = pkt->pts -
+                        in_stream->codecpar->video_delay * pkt->duration;
+            pkt->dts = *next;
+        }
+        if (pkt->dts != AV_NOPTS_VALUE)
+            *next = pkt->dts + pkt->duration;
 
         pkt->stream_index = stream_mapping[pkt->stream_index];
         out_stream = ofmt_ctx->streams[pkt->stream_index];
@@ -202,6 +221,7 @@ end:
     avformat_free_context(ofmt_ctx);
 
     av_freep(&stream_mapping);
+    av_freep(&next_dts);
 
     if (ret < 0 && ret != AVERROR_EOF) {
         fprintf(stderr, "Error occurred: %s\n", av_err2str(ret));
