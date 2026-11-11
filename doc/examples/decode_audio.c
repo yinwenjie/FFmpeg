@@ -92,15 +92,26 @@ static void decode(AVCodecContext *dec_ctx, AVPacket *pkt, AVFrame *frame,
             fprintf(stderr, "Error during decoding\n");
             exit(1);
         }
-        data_size = av_get_bytes_per_sample(dec_ctx->sample_fmt);
+        data_size = av_get_bytes_per_sample(frame->format);
         if (data_size < 0) {
             /* This should not occur, checking just for paranoia */
             fprintf(stderr, "Failed to calculate data size\n");
             exit(1);
         }
-        for (i = 0; i < frame->nb_samples; i++)
-            for (ch = 0; ch < dec_ctx->ch_layout.nb_channels; ch++)
-                fwrite(frame->data[ch] + data_size*i, 1, data_size, outfile);
+        if (av_sample_fmt_is_planar(frame->format)) {
+            /* every channel has a plane of its own: interleave the samples.
+             * data[] has room for AV_NUM_DATA_POINTERS planes only,
+             * extended_data reaches the planes of all the channels */
+            for (i = 0; i < frame->nb_samples; i++)
+                for (ch = 0; ch < frame->ch_layout.nb_channels; ch++)
+                    fwrite(frame->extended_data[ch] + data_size*i, 1,
+                           data_size, outfile);
+        } else {
+            /* the samples of all the channels are already interleaved
+             * in a single plane */
+            fwrite(frame->extended_data[0], data_size * frame->ch_layout.nb_channels,
+                   frame->nb_samples, outfile);
+        }
     }
 }
 
@@ -226,8 +237,8 @@ int main(int argc, char **argv)
     }
 
     /* print output pcm infomations, because there have no metadata of pcm */
-    /* decode() interleaves the samples of all channels, so the output file
-     * is in the packed variant of the planar format the decoder produced */
+    /* decode() writes interleaved samples, so the output file is in the
+     * packed variant of the format the decoder produced */
     sfmt = av_get_packed_sample_fmt(c->sample_fmt);
 
     if ((ret = get_format_from_sample_fmt(&fmt, sfmt)) < 0)
