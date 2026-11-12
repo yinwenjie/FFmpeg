@@ -646,18 +646,18 @@ int main(int argc, char **argv)
         if (ret < 0) {
             fprintf(stderr, "Could not open '%s': %s\n", filename,
                     av_err2str(ret));
-            return 1;
+            goto fail;
         }
     }
 
     /* Write the stream header, if any. */
     ret = avformat_write_header(oc, &opt);
-    av_dict_free(&opt);
     if (ret < 0) {
         fprintf(stderr, "Error occurred when opening output file: %s\n",
                 av_err2str(ret));
-        return 1;
+        goto fail;
     }
+    av_dict_free(&opt);
 
     while (encode_video || encode_audio) {
         /* select the stream to encode */
@@ -673,7 +673,7 @@ int main(int argc, char **argv)
     ret = av_write_trailer(oc);
     if (ret < 0) {
         fprintf(stderr, "Error writing the trailer: %s\n", av_err2str(ret));
-        return 1;
+        goto fail;
     }
 
     /* Close each codec. */
@@ -688,6 +688,7 @@ int main(int argc, char **argv)
         if (ret < 0) {
             fprintf(stderr, "Error closing '%s': %s\n", filename,
                     av_err2str(ret));
+            avformat_free_context(oc);
             return 1;
         }
     }
@@ -696,4 +697,17 @@ int main(int argc, char **argv)
     avformat_free_context(oc);
 
     return 0;
+
+fail:
+    /* Release everything that has been set up so far. */
+    av_dict_free(&opt);
+    if (have_video)
+        close_stream(oc, &video_st);
+    if (have_audio)
+        close_stream(oc, &audio_st);
+    if (!(fmt->flags & AVFMT_NOFILE))
+        avio_closep(&oc->pb);
+    avformat_free_context(oc);
+
+    return 1;
 }
