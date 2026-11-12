@@ -262,7 +262,7 @@ int main (int argc, char **argv)
         video_dst_file = fopen(video_dst_filename, "wb");
         if (!video_dst_file) {
             fprintf(stderr, "Could not open destination file %s\n", video_dst_filename);
-            ret = 1;
+            ret = AVERROR(errno);
             goto end;
         }
 
@@ -284,7 +284,7 @@ int main (int argc, char **argv)
         audio_dst_file = fopen(audio_dst_filename, "wb");
         if (!audio_dst_file) {
             fprintf(stderr, "Could not open destination file %s\n", audio_dst_filename);
-            ret = 1;
+            ret = AVERROR(errno);
             goto end;
         }
     }
@@ -294,7 +294,7 @@ int main (int argc, char **argv)
 
     if (!audio_stream && !video_stream) {
         fprintf(stderr, "Could not find audio or video stream in the input, aborting\n");
-        ret = 1;
+        ret = AVERROR_STREAM_NOT_FOUND;
         goto end;
     }
 
