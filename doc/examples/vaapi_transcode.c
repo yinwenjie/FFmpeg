@@ -238,25 +238,26 @@ fail:
 int main(int argc, char **argv)
 {
     const AVCodec *enc_codec;
-    int ret = 0;
+    int ret = 0, err;
     AVPacket *dec_pkt;
 
     if (argc != 4) {
         fprintf(stderr, "Usage: %s <input file> <encode codec> <output file>\n"
                 "The output format is guessed according to the file extension.\n"
                 "\n", argv[0]);
-        return -1;
+        return 1;
     }
 
     ret = av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI, NULL, NULL, 0);
     if (ret < 0) {
         fprintf(stderr, "Failed to create a VAAPI device. Error code: %s\n", av_err2str(ret));
-        return -1;
+        return 1;
     }
 
     dec_pkt = av_packet_alloc();
     if (!dec_pkt) {
         fprintf(stderr, "Failed to allocate decode packet\n");
+        ret = AVERROR(ENOMEM);
         goto end;
     }
 
@@ -265,7 +266,7 @@ int main(int argc, char **argv)
 
     if (!(enc_codec = avcodec_find_encoder_by_name(argv[2]))) {
         fprintf(stderr, "Could not find encoder '%s'\n", argv[2]);
-        ret = -1;
+        ret = AVERROR_ENCODER_NOT_FOUND;
         goto end;
     }
 
@@ -297,25 +298,51 @@ int main(int argc, char **argv)
 
         av_packet_unref(dec_pkt);
     }
+    if (ret == AVERROR_EOF)
+        ret = 0;
 
-    /* flush decoder */
+    /* flush decoder; even after an error, finish the output with the frames
+     * that were decoded, but report the first error */
     av_packet_unref(dec_pkt);
-    ret = dec_enc(dec_pkt, enc_codec);
+    err = dec_enc(dec_pkt, enc_codec);
+    if (ret >= 0)
+        ret = err;
 
-    /* flush encoder */
-    ret = encode_write(dec_pkt, NULL);
+    if (initialized) {
+        /* flush encoder */
+        err = encode_write(dec_pkt, NULL);
+        if (ret >= 0)
+            ret = err;
 
-    /* write the trailer for output stream */
-    av_write_trailer(ofmt_ctx);
+        /* write the trailer for output stream */
+        err = av_write_trailer(ofmt_ctx);
+        if (err < 0)
+            fprintf(stderr, "Error while writing the trailer. Error code: %s\n",
+                    av_err2str(err));
+        if (ret >= 0)
+            ret = err;
+    } else if (ret >= 0) {
+        /* the encoder and the output header are set up when the first frame is
+         * decoded; without a frame there is nothing to flush or to finish
+         * (calling av_write_trailer() without a header crashes) */
+        fprintf(stderr, "No video frame could be decoded.\n");
+        ret = AVERROR_INVALIDDATA;
+    }
 
 end:
     avformat_close_input(&ifmt_ctx);
-    if (ofmt_ctx && !(ofmt_ctx->oformat->flags & AVFMT_NOFILE))
-        avio_closep(&ofmt_ctx->pb);
+    if (ofmt_ctx && !(ofmt_ctx->oformat->flags & AVFMT_NOFILE)) {
+        err = avio_closep(&ofmt_ctx->pb);
+        if (err < 0 && ret >= 0) {
+            fprintf(stderr, "Error while closing the output file. Error code: %s\n",
+                    av_err2str(err));
+            ret = err;
+        }
+    }
     avformat_free_context(ofmt_ctx);
     avcodec_free_context(&decoder_ctx);
     avcodec_free_context(&encoder_ctx);
     av_buffer_unref(&hw_device_ctx);
     av_packet_free(&dec_pkt);
-    return ret;
+    return ret < 0 ? 1 : 0;
 }
