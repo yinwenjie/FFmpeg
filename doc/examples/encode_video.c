@@ -61,7 +61,10 @@ static void encode(AVCodecContext *enc_ctx, AVFrame *frame, AVPacket *pkt,
         }
 
         printf("Write packet %3"PRId64" (size=%5d)\n", pkt->pts, pkt->size);
-        fwrite(pkt->data, 1, pkt->size, outfile);
+        if (fwrite(pkt->data, 1, pkt->size, outfile) != pkt->size) {
+            fprintf(stderr, "Error writing the encoded data\n");
+            exit(1);
+        }
         av_packet_unref(pkt);
     }
 }
@@ -206,7 +209,11 @@ int main(int argc, char **argv)
      */
     if (codec->id == AV_CODEC_ID_MPEG1VIDEO || codec->id == AV_CODEC_ID_MPEG2VIDEO)
         fwrite(endcode, 1, sizeof(endcode), f);
-    fclose(f);
+    ret = ferror(f);
+    if (fclose(f) || ret) {
+        fprintf(stderr, "Error writing %s\n", filename);
+        exit(1);
+    }
 
     avcodec_free_context(&c);
     av_frame_free(&frame);
