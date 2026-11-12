@@ -66,7 +66,8 @@ static int list_op(const char *input_dir)
     AVIODirEntry *entry = NULL;
     AVIODirContext *ctx = NULL;
     int cnt, ret;
-    char filemode[4], uid_and_gid[20];
+    /* Two int64_t, each up to 20 characters with the sign, plus "(", ")" and NUL. */
+    char filemode[4], uid_and_gid[44];
 
     if ((ret = avio_open_dir(&ctx, input_dir, NULL)) < 0) {
         av_log(NULL, AV_LOG_ERROR, "Cannot open directory: %s.\n", av_err2str(ret));
@@ -86,7 +87,8 @@ static int list_op(const char *input_dir)
         } else {
             snprintf(filemode, 4, "%3"PRIo64, entry->filemode);
         }
-        snprintf(uid_and_gid, 20, "%"PRId64"(%"PRId64")", entry->user_id, entry->group_id);
+        snprintf(uid_and_gid, sizeof(uid_and_gid), "%"PRId64"(%"PRId64")",
+                 entry->user_id, entry->group_id);
         if (cnt == 0)
             av_log(NULL, AV_LOG_INFO, "%-9s %12s %30s %10s %s %16s %16s %16s\n",
                    "TYPE", "SIZE", "NAME", "UID(GID)", "UGO", "MODIFIED",
