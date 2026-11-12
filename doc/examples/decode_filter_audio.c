@@ -39,7 +39,7 @@
 #include <libavutil/opt.h>
 
 static const char *filter_descr = "aresample=8000,aformat=sample_fmts=s16:channel_layouts=mono";
-static const char *player       = "ffplay -f s16le -ar 8000 -ac 1 -";
+static const char *player       = "ffplay -f s16le -ar 8000 -ch_layout mono -";
 
 static AVFormatContext *fmt_ctx;
 static AVCodecContext *dec_ctx;
