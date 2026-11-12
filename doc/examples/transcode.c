@@ -673,7 +673,7 @@ int main(int argc, char **argv)
         }
     }
 
-    av_write_trailer(ofmt_ctx);
+    ret = av_write_trailer(ofmt_ctx);
 end:
     av_packet_free(&packet);
     for (i = 0; ifmt_ctx && stream_ctx && i < ifmt_ctx->nb_streams; i++) {
@@ -691,8 +691,11 @@ end:
     av_free(filter_ctx);
     av_free(stream_ctx);
     avformat_close_input(&ifmt_ctx);
-    if (ofmt_ctx && !(ofmt_ctx->oformat->flags & AVFMT_NOFILE))
-        avio_closep(&ofmt_ctx->pb);
+    if (ofmt_ctx && !(ofmt_ctx->oformat->flags & AVFMT_NOFILE)) {
+        int close_ret = avio_closep(&ofmt_ctx->pb);
+        if (close_ret < 0 && ret >= 0)
+            ret = close_ret;
+    }
     avformat_free_context(ofmt_ctx);
 
     if (ret < 0)
