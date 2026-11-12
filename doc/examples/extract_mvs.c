@@ -103,7 +103,7 @@ static int open_codec_context(AVFormatContext *fmt_ctx, enum AVMediaType type)
         dec_ctx = avcodec_alloc_context3(dec);
         if (!dec_ctx) {
             fprintf(stderr, "Failed to allocate codec\n");
-            return AVERROR(EINVAL);
+            return AVERROR(ENOMEM);
         }
 
         ret = avcodec_parameters_to_context(dec_ctx, st->codecpar);
@@ -120,6 +120,7 @@ static int open_codec_context(AVFormatContext *fmt_ctx, enum AVMediaType type)
         if (ret < 0) {
             fprintf(stderr, "Failed to open %s codec\n",
                     av_get_media_type_string(type));
+            avcodec_free_context(&dec_ctx);
             return ret;
         }
 
