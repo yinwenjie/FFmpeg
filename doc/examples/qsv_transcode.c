@@ -225,7 +225,7 @@ static int encode_write(AVPacket *enc_pkt, AVFrame *frame)
         goto end;
     }
     while (1) {
-        if (ret = avcodec_receive_packet(encoder_ctx, enc_pkt))
+        if ((ret = avcodec_receive_packet(encoder_ctx, enc_pkt)))
             break;
         enc_pkt->stream_index = 0;
         av_packet_rescale_ts(enc_pkt, encoder_ctx->time_base,
@@ -370,6 +370,7 @@ int main(int argc, char **argv)
     dec_pkt = av_packet_alloc();
     if (!dec_pkt) {
         fprintf(stderr, "Failed to allocate decode packet\n");
+        ret = AVERROR(ENOMEM);
         goto end;
     }
 
@@ -410,6 +411,10 @@ int main(int argc, char **argv)
 
         av_packet_unref(dec_pkt);
     }
+    /* the end of the input is not an error; any other error ends the
+     * transcoding, and must not be overwritten by the result of the flush */
+    if (ret != AVERROR_EOF)
+        goto end;
 
     /* flush decoder */
     av_packet_unref(dec_pkt);
@@ -438,5 +443,5 @@ end:
     av_buffer_unref(&hw_device_ctx);
     av_packet_free(&dec_pkt);
     av_freep(&dynamic_setting);
-    return ret;
+    return ret < 0 ? 1 : 0;
 }
