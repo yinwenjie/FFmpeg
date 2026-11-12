@@ -35,6 +35,7 @@
 #include <libavfilter/buffersink.h>
 #include <libavfilter/buffersrc.h>
 #include <libavutil/channel_layout.h>
+#include <libavutil/mathematics.h>
 #include <libavutil/mem.h>
 #include <libavutil/opt.h>
 #include <libavutil/pixdesc.h>
@@ -56,6 +57,9 @@ typedef struct StreamContext {
     AVCodecContext *enc_ctx;
 
     AVFrame *dec_frame;
+
+    /* state of av_rescale_delta() for the audio timestamps */
+    int64_t audio_pts_last;
 } StreamContext;
 static StreamContext *stream_ctx;
 
@@ -120,6 +124,7 @@ static int open_input_file(const char *filename)
         stream_ctx[i].dec_frame = av_frame_alloc();
         if (!stream_ctx[i].dec_frame)
             return AVERROR(ENOMEM);
+        stream_ctx[i].audio_pts_last = AV_NOPTS_VALUE;
     }
 
     av_dump_format(ifmt_ctx, 0, filename, 0);
@@ -356,8 +361,8 @@ static int init_filter(FilteringContext* fctx, AVCodecContext *dec_ctx,
             av_channel_layout_default(&dec_ctx->ch_layout, dec_ctx->ch_layout.nb_channels);
         av_channel_layout_describe(&dec_ctx->ch_layout, buf, sizeof(buf));
         snprintf(args, sizeof(args),
-                "time_base=%d/%d:sample_rate=%d:sample_fmt=%s:channel_layout=%s",
-                dec_ctx->pkt_timebase.num, dec_ctx->pkt_timebase.den, dec_ctx->sample_rate,
+                "time_base=1/%d:sample_rate=%d:sample_fmt=%s:channel_layout=%s",
+                dec_ctx->sample_rate, dec_ctx->sample_rate,
                 av_get_sample_fmt_name(dec_ctx->sample_fmt),
                 buf);
         ret = avfilter_graph_create_filter(&buffersrc_ctx, buffersrc, "in",
@@ -529,6 +534,35 @@ static int encode_write_frame(unsigned int stream_index, int flush)
     return ret;
 }
 
+/* Set the timestamp of a decoded frame to the one the filters expect: for
+ * video the best guess of the decoder, in the time base of the stream; for
+ * audio the same, converted to 1/sample_rate. */
+static void set_frame_pts(StreamContext *stream)
+{
+    AVFrame *frame = stream->dec_frame;
+    AVRational sr_tb;
+
+    frame->pts = frame->best_effort_timestamp;
+    if (stream->dec_ctx->codec_type != AVMEDIA_TYPE_AUDIO)
+        return;
+    sr_tb = (AVRational){ 1, frame->sample_rate };
+
+    /* Containers with a coarse time base (1/1000 in FLV and Matroska) store
+     * rounded timestamps, so the frames of 1024 samples come out 1014, 1015,
+     * 1058... samples apart after a plain conversion to 1/sample_rate.
+     * av_rescale_delta() uses the known duration of the frames to make the
+     * timestamps continuous again, and falls back to a plain conversion when
+     * there is a real gap. */
+    if (frame->pts == AV_NOPTS_VALUE) {
+        frame->pts = stream->audio_pts_last == AV_NOPTS_VALUE ? 0 : stream->audio_pts_last;
+        stream->audio_pts_last = frame->pts + frame->nb_samples;
+    } else {
+        frame->pts = av_rescale_delta(stream->dec_ctx->pkt_timebase, frame->pts,
+                                      sr_tb, frame->nb_samples,
+                                      &stream->audio_pts_last, sr_tb);
+    }
+}
+
 static int filter_encode_write_frame(AVFrame *frame, unsigned int stream_index)
 {
     FilteringContext *filter = &filter_ctx[stream_index];
@@ -626,7 +660,7 @@ int main(int argc, char **argv)
                 else if (ret < 0)
                     goto end;
 
-                stream->dec_frame->pts = stream->dec_frame->best_effort_timestamp;
+                set_frame_pts(stream);
                 ret = filter_encode_write_frame(stream->dec_frame, stream_index);
                 if (ret < 0)
                     goto end;
@@ -669,7 +703,7 @@ int main(int argc, char **argv)
             else if (ret < 0)
                 goto end;
 
-            stream->dec_frame->pts = stream->dec_frame->best_effort_timestamp;
+            set_frame_pts(stream);
             ret = filter_encode_write_frame(stream->dec_frame, i);
             if (ret < 0)
                 goto end;
