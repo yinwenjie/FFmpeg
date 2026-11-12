@@ -2308,7 +2308,9 @@ static int http_close(URLContext *h)
     av_freep(&s->inflate_buffer);
 #endif /* CONFIG_ZLIB */
 
-    if (s->hd && !s->end_chunked_post)
+    /* The listening context of a multi-client server has no connection of
+     * its own, and writing to a listening socket never completes. */
+    if (s->hd && !s->end_chunked_post && s->listen != HTTP_MUTLI)
         /* Close the write direction by sending the end of chunked encoding. */
         ret = http_shutdown(h, h->flags);
 
