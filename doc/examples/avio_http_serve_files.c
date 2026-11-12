@@ -49,7 +49,7 @@ static void process_client(AVIOContext *client, const char *in_uri)
     }
     if (ret < 0)
         goto end;
-    av_log(client, AV_LOG_TRACE, "resource=%p\n", resource);
+    av_log(client, AV_LOG_TRACE, "resource=%s\n", resource ? resource : "(none)");
     if (resource && resource[0] == '/' && !strcmp((resource + 1), in_uri)) {
         reply_code = 200;
     } else {
