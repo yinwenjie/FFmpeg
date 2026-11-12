@@ -89,20 +89,28 @@ static int output_video_frame(AVFrame *frame)
 
 static int output_audio_frame(AVFrame *frame)
 {
-    size_t unpadded_linesize = frame->nb_samples * av_get_bytes_per_sample(frame->format);
+    const int bps      = av_get_bytes_per_sample(frame->format);
+    const int channels = frame->ch_layout.nb_channels;
+
     printf("audio_frame n:%d nb_samples:%d pts:%s\n",
            audio_frame_count++, frame->nb_samples,
            av_ts2timestr(frame->pts, &audio_stream->time_base));
 
-    /* Write the raw audio data samples of the first plane. This works
-     * fine for packed formats (e.g. AV_SAMPLE_FMT_S16). However,
-     * most audio decoders output planar audio, which uses a separate
-     * plane of audio samples for each channel (e.g. AV_SAMPLE_FMT_S16P).
-     * In other words, this code will write only the first audio channel
-     * in these cases.
-     * You should use libswresample or libavfilter to convert the frame
-     * to packed data. */
-    fwrite(frame->extended_data[0], 1, unpadded_linesize, audio_dst_file);
+    /* A raw audio file contains interleaved samples. Packed formats
+     * (e.g. AV_SAMPLE_FMT_S16) already store the samples of all channels
+     * interleaved in the first plane. Planar formats
+     * (e.g. AV_SAMPLE_FMT_S16P), which most audio decoders output, use a
+     * separate plane for each channel, so the samples have to be
+     * interleaved here.
+     * libswresample or libavfilter can be used to convert a frame to
+     * another sample format, sample rate or channel layout. */
+    if (av_sample_fmt_is_planar(frame->format)) {
+        for (int i = 0; i < frame->nb_samples; i++)
+            for (int ch = 0; ch < channels; ch++)
+                fwrite(frame->extended_data[ch] + bps * i, 1, bps, audio_dst_file);
+    } else {
+        fwrite(frame->extended_data[0], bps * channels, frame->nb_samples, audio_dst_file);
+    }
 
     return 0;
 }
@@ -350,25 +358,15 @@ int main (int argc, char **argv)
     }
 
     if (audio_stream) {
-        enum AVSampleFormat sfmt = audio_dec_ctx->sample_fmt;
-        AVChannelLayout mono = AV_CHANNEL_LAYOUT_MONO;
-        AVChannelLayout *ch_layout = &audio_dec_ctx->ch_layout;
+        /* the samples of planar formats were interleaved when writing */
+        enum AVSampleFormat sfmt = av_get_packed_sample_fmt(audio_dec_ctx->sample_fmt);
         const char *fmt;
         char buf[64];
-
-        if (av_sample_fmt_is_planar(sfmt)) {
-            const char *packed = av_get_sample_fmt_name(sfmt);
-            printf("Warning: the sample format the decoder produced is planar "
-                   "(%s). This example will output the first channel only.\n",
-                   packed ? packed : "?");
-            sfmt = av_get_packed_sample_fmt(sfmt);
-            ch_layout = &mono;
-        }
 
         if ((ret = get_format_from_sample_fmt(&fmt, sfmt)) < 0)
             goto end;
 
-        if ((ret = av_channel_layout_describe(ch_layout, buf, sizeof(buf))) < 0)
+        if ((ret = av_channel_layout_describe(&audio_dec_ctx->ch_layout, buf, sizeof(buf))) < 0)
             goto end;
 
         printf("Play the output audio file with the command:\n"
