@@ -176,6 +176,11 @@ static int open_output_file(const char *filename)
                 enc_ctx->height = dec_ctx->height;
                 enc_ctx->width = dec_ctx->width;
                 enc_ctx->sample_aspect_ratio = dec_ctx->sample_aspect_ratio;
+                enc_ctx->color_range = dec_ctx->color_range;
+                enc_ctx->color_primaries = dec_ctx->color_primaries;
+                enc_ctx->color_trc = dec_ctx->color_trc;
+                enc_ctx->colorspace = dec_ctx->colorspace;
+                enc_ctx->chroma_sample_location = dec_ctx->chroma_sample_location;
 
                 ret = avcodec_get_supported_config(enc_ctx, NULL,
                                                    AV_CODEC_CONFIG_PIX_FORMAT, 0,
