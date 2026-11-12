@@ -588,12 +588,14 @@ int main(int argc, char **argv)
     int i;
 
     if (argc < 2) {
-        printf("usage: %s output_file\n"
+        printf("usage: %s output_file [-flags codec_flags] [-fflags format_flags]\n"
                "API example program to output a media file with libavformat.\n"
                "This program generates a synthetic audio and video stream, encodes and\n"
                "muxes them into a file named output_file.\n"
                "The output format is automatically guessed according to the file extension.\n"
                "Raw images can also be output by using '%%d' in the filename.\n"
+               "The flags are passed on to the encoders and to the muxer, for example\n"
+               "-flags +bitexact -fflags +bitexact.\n"
                "\n", argv[0]);
         return 1;
     }
