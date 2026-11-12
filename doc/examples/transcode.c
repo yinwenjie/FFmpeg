@@ -142,6 +142,11 @@ static int open_output_file(const char *filename)
         return ret;
     }
 
+    ret = av_dict_copy(&ofmt_ctx->metadata, ifmt_ctx->metadata, 0);
+    if (ret < 0) {
+        av_log(NULL, AV_LOG_ERROR, "Failed to copy metadata\n");
+        return ret;
+    }
 
     for (i = 0; i < ifmt_ctx->nb_streams; i++) {
         out_stream = avformat_new_stream(ofmt_ctx, NULL);
@@ -152,6 +157,13 @@ static int open_output_file(const char *filename)
 
         in_stream = ifmt_ctx->streams[i];
         dec_ctx = stream_ctx[i].dec_ctx;
+
+        ret = av_dict_copy(&out_stream->metadata, in_stream->metadata, 0);
+        if (ret < 0) {
+            av_log(NULL, AV_LOG_ERROR, "Failed to copy metadata of stream #%u\n", i);
+            return ret;
+        }
+        out_stream->disposition = in_stream->disposition;
 
         if (dec_ctx->codec_type == AVMEDIA_TYPE_VIDEO
                 || dec_ctx->codec_type == AVMEDIA_TYPE_AUDIO) {
