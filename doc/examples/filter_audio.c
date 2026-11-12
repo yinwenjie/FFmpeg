@@ -258,7 +258,7 @@ static int get_input(AVFrame *frame, int frame_num)
         float *data = (float*)frame->extended_data[i];
 
         for (j = 0; j < frame->nb_samples; j++)
-            data[j] = sin(2 * M_PI * (frame_num + j) * (i + 1) / FRAME_SIZE);
+            data[j] = sin(2 * M_PI * j * (i + 1) / FRAME_SIZE);
     }
 
     return 0;
