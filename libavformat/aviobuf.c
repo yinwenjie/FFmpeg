@@ -1386,15 +1386,24 @@ int avio_close_dyn_buf(AVIOContext *s, uint8_t **pbuffer)
         return 0;
     }
 
-    /* don't attempt to pad fixed-size packet buffers */
-    if (!s->max_packet_size) {
-        ffio_fill(s, 0, AV_INPUT_BUFFER_PADDING_SIZE);
-        padding = AV_INPUT_BUFFER_PADDING_SIZE;
-    }
-
+    /* Write out what is still buffered before looking at the position:
+     * a muxer that seeked back to patch its header can leave its last
+     * bytes there. */
     avio_flush(s);
 
     d = s->opaque;
+
+    /* don't attempt to pad fixed-size packet buffers */
+    if (!s->max_packet_size) {
+        /* The muxer may have left the write position in the middle of the
+         * data, e.g. after updating the duration in the header. The padding
+         * belongs after the last byte, not over the data at that position. */
+        d->pos = d->size;
+        ffio_fill(s, 0, AV_INPUT_BUFFER_PADDING_SIZE);
+        padding = AV_INPUT_BUFFER_PADDING_SIZE;
+        avio_flush(s);
+    }
+
     *pbuffer = d->buffer;
     size = d->size;
 
