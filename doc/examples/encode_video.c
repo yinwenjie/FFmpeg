@@ -87,7 +87,7 @@ int main(int argc, char **argv)
     filename = argv[1];
     codec_name = argv[2];
 
-    /* find the mpeg1video encoder */
+    /* find the encoder with the requested name */
     codec = avcodec_find_encoder_by_name(codec_name);
     if (!codec) {
         fprintf(stderr, "Codec '%s' not found\n", codec_name);
