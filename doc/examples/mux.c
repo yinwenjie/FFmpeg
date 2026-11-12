@@ -623,6 +623,7 @@ int main(int argc, char **argv)
 
     /* Write the stream header, if any. */
     ret = avformat_write_header(oc, &opt);
+    av_dict_free(&opt);
     if (ret < 0) {
         fprintf(stderr, "Error occurred when opening output file: %s\n",
                 av_err2str(ret));
