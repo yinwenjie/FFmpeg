@@ -216,9 +216,14 @@ static int open_output_file(const char *filename,
     avctx->sample_rate    = input_codec_context->sample_rate;
     avctx->bit_rate       = OUTPUT_BIT_RATE;
 
-    /* Set the sample rate for the container. */
-    stream->time_base.den = input_codec_context->sample_rate;
-    stream->time_base.num = 1;
+    /* The encoder timestamps its frames and packets in samples. */
+    avctx->time_base.den  = input_codec_context->sample_rate;
+    avctx->time_base.num  = 1;
+
+    /* Suggest the same time base for the container. The muxer is free to
+     * choose another one in avformat_write_header(), so the packet
+     * timestamps are converted before they are written. */
+    stream->time_base     = avctx->time_base;
 
     /* Some container formats (like MP4) require global headers to be present.
      * Mark the encoder so that it behaves accordingly. */
@@ -706,6 +711,14 @@ static int encode_audio_frame(AVFrame *frame,
     /* Default case: Return encoded data. */
     } else {
         *data_present = 1;
+    }
+
+    /* Convert the timestamps from the encoder's time base to the time base
+     * the muxer has chosen for the stream. */
+    if (*data_present) {
+        av_packet_rescale_ts(output_packet, output_codec_context->time_base,
+                             output_format_context->streams[0]->time_base);
+        output_packet->stream_index = 0;
     }
 
     /* Write one audio frame from the temporary packet to the output file. */
