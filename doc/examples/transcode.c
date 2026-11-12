@@ -599,7 +599,7 @@ int main(int argc, char **argv)
             ret = avcodec_send_packet(stream->dec_ctx, packet);
             if (ret < 0) {
                 av_log(NULL, AV_LOG_ERROR, "Decoding failed\n");
-                break;
+                goto end;
             }
 
             while (ret >= 0) {
