@@ -123,8 +123,11 @@ int main(int argc, char **argv)
     c->max_b_frames = 1;
     c->pix_fmt = AV_PIX_FMT_YUV420P;
 
-    if (codec->id == AV_CODEC_ID_H264)
-        av_opt_set(c->priv_data, "preset", "slow", 0);
+    if (codec->id == AV_CODEC_ID_H264) {
+        ret = av_opt_set(c->priv_data, "preset", "slow", 0);
+        if (ret < 0)
+            fprintf(stderr, "Could not set the preset: %s\n", av_err2str(ret));
+    }
 
     /* open it */
     ret = avcodec_open2(c, codec, NULL);
