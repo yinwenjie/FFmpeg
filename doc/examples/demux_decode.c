@@ -318,7 +318,7 @@ int main (int argc, char **argv)
         printf("Demuxing audio from file '%s' into '%s'\n", src_filename, audio_dst_filename);
 
     /* read frames from the file */
-    while (av_read_frame(fmt_ctx, pkt) >= 0) {
+    while ((ret = av_read_frame(fmt_ctx, pkt)) >= 0) {
         // check if the packet belongs to a stream we are interested in, otherwise
         // skip it
         if (pkt->stream_index == video_stream_idx)
@@ -327,14 +327,18 @@ int main (int argc, char **argv)
             ret = decode_packet(audio_dec_ctx, pkt);
         av_packet_unref(pkt);
         if (ret < 0)
-            break;
+            goto end;
+    }
+    if (ret != AVERROR_EOF) {
+        fprintf(stderr, "Error reading from %s (%s)\n", src_filename, av_err2str(ret));
+        goto end;
     }
 
     /* flush the decoders */
-    if (video_dec_ctx)
-        decode_packet(video_dec_ctx, NULL);
-    if (audio_dec_ctx)
-        decode_packet(audio_dec_ctx, NULL);
+    if (video_stream && (ret = decode_packet(video_dec_ctx, NULL)) < 0)
+        goto end;
+    if (audio_stream && (ret = decode_packet(audio_dec_ctx, NULL)) < 0)
+        goto end;
 
     printf("Demuxing succeeded.\n");
 
