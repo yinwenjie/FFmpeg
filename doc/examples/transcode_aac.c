@@ -394,10 +394,9 @@ static int decode_audio_frame(AVFrame *frame,
     *finished = 0;
     /* Read one audio frame from the input file into a temporary packet. */
     if ((error = av_read_frame(input_format_context, input_packet)) < 0) {
-        /* If we are at the end of the file, flush the decoder below. */
-        if (error == AVERROR_EOF)
-            *finished = 1;
-        else {
+        /* At the end of the file the packet stays empty. Sending it to the
+         * decoder below flushes the decoder, which may still hold frames. */
+        if (error != AVERROR_EOF) {
             fprintf(stderr, "Could not read frame (error '%s')\n",
                     av_err2str(error));
             goto cleanup;
@@ -405,8 +404,11 @@ static int decode_audio_frame(AVFrame *frame,
     }
 
     /* Send the audio frame stored in the temporary packet to the decoder.
-     * The input audio stream decoder is used to do this. */
-    if ((error = avcodec_send_packet(input_codec_context, input_packet)) < 0) {
+     * The input audio stream decoder is used to do this.
+     * Flushing a decoder that has been flushed already returns AVERROR_EOF,
+     * which is not an error: the remaining frames are received below. */
+    error = avcodec_send_packet(input_codec_context, input_packet);
+    if (error < 0 && error != AVERROR_EOF) {
         fprintf(stderr, "Could not send packet for decoding (error '%s')\n",
                 av_err2str(error));
         goto cleanup;
