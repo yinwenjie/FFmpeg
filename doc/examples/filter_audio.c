@@ -222,7 +222,8 @@ static int process_output(struct AVMD5 *md5, AVFrame *frame)
         uint8_t checksum[16];
 
         av_md5_init(md5);
-        av_md5_sum(checksum, frame->extended_data[i], plane_size);
+        av_md5_update(md5, frame->extended_data[i], plane_size);
+        av_md5_final(md5, checksum);
 
         fprintf(stdout, "plane %d: 0x", i);
         for (j = 0; j < sizeof(checksum); j++)
