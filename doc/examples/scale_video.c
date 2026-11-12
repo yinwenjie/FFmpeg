@@ -121,11 +121,25 @@ int main(int argc, char **argv)
         fill_yuv_image(src_data, src_linesize, src_w, src_h, i);
 
         /* convert to destination format */
-        sws_scale(sws_ctx, (const uint8_t * const*)src_data,
-                  src_linesize, 0, src_h, dst_data, dst_linesize);
+        ret = sws_scale(sws_ctx, (const uint8_t * const*)src_data,
+                        src_linesize, 0, src_h, dst_data, dst_linesize);
+        if (ret < 0) {
+            fprintf(stderr, "Error while scaling: %s\n", av_err2str(ret));
+            goto end;
+        }
 
         /* write scaled image to file */
-        fwrite(dst_data[0], 1, dst_bufsize, dst_file);
+        if (fwrite(dst_data[0], 1, dst_bufsize, dst_file) != dst_bufsize) {
+            fprintf(stderr, "Error writing to %s\n", dst_filename);
+            ret = AVERROR(EIO);
+            goto end;
+        }
+    }
+
+    if (fflush(dst_file)) {
+        fprintf(stderr, "Error writing to %s\n", dst_filename);
+        ret = AVERROR(EIO);
+        goto end;
     }
 
     fprintf(stderr, "Scaling succeeded. Play the output file with the command:\n"
