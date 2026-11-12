@@ -201,8 +201,8 @@ int main(int argc, char **argv)
         goto end;
     av_channel_layout_describe(&dst_ch_layout, buf, sizeof(buf));
     fprintf(stderr, "Resampling succeeded. Play the output file with the command:\n"
-            "ffplay -f %s -channel_layout %s -channels %d -ar %d %s\n",
-            fmt, buf, dst_nb_channels, dst_rate, dst_filename);
+            "ffplay -f %s -ch_layout %s -ar %d %s\n",
+            fmt, buf, dst_rate, dst_filename);
 
 end:
     fclose(dst_file);
