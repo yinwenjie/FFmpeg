@@ -150,7 +150,7 @@ int main(int argc, char **argv)
     AVPacket *pkt;
     int i, j, k, ret;
     FILE *f;
-    uint16_t *samples;
+    int16_t *samples;
     double t, tincr;
 
     if (argc <= 1) {
@@ -237,7 +237,7 @@ int main(int argc, char **argv)
         ret = av_frame_make_writable(frame);
         if (ret < 0)
             exit(1);
-        samples = (uint16_t*)frame->data[0];
+        samples = (int16_t*)frame->data[0];
 
         for (j = 0; j < c->frame_size; j++) {
             samples[c->ch_layout.nb_channels*j] = (int)(sin(t) * 10000);
