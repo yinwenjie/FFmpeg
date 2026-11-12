@@ -176,8 +176,10 @@ int main(int argc, char **argv)
             av_freep(&dst_data[0]);
             ret = av_samples_alloc(dst_data, &dst_linesize, dst_nb_channels,
                                    dst_nb_samples, dst_sample_fmt, 1);
-            if (ret < 0)
-                break;
+            if (ret < 0) {
+                fprintf(stderr, "Could not allocate destination samples\n");
+                goto end;
+            }
             max_dst_nb_samples = dst_nb_samples;
         }
 
