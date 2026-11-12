@@ -676,7 +676,7 @@ int main(int argc, char **argv)
     av_write_trailer(ofmt_ctx);
 end:
     av_packet_free(&packet);
-    for (i = 0; i < ifmt_ctx->nb_streams; i++) {
+    for (i = 0; ifmt_ctx && stream_ctx && i < ifmt_ctx->nb_streams; i++) {
         avcodec_free_context(&stream_ctx[i].dec_ctx);
         if (ofmt_ctx && ofmt_ctx->nb_streams > i && ofmt_ctx->streams[i] && stream_ctx[i].enc_ctx)
             avcodec_free_context(&stream_ctx[i].enc_ctx);
