@@ -268,7 +268,7 @@ static int get_input(AVFrame *frame, int frame_num)
 int main(int argc, char *argv[])
 {
     struct AVMD5 *md5;
-    AVFilterGraph *graph;
+    AVFilterGraph *graph = NULL;
     AVFilterContext *src, *sink;
     AVFrame *frame;
     float duration;
@@ -303,10 +303,8 @@ int main(int argc, char *argv[])
     /* Set up the filtergraph. */
     err = init_filter_graph(&graph, &src, &sink);
     if (err < 0) {
-        av_frame_free(&frame);
-        av_freep(&md5);
         fprintf(stderr, "Unable to init filter graph:");
-        return 1;
+        goto fail;
     }
 
     /* the main filtering loop */
