@@ -25,7 +25,9 @@
  * @example avio_read_callback.c
  *
  * Make libavformat demuxer access media content through a custom
- * AVIOContext read callback.
+ * AVIOContext read callback, with a seek callback so that formats that
+ * need to jump around in the data (an MP4 file with the moov atom at
+ * the end, for example) can be demuxed as well.
  */
 
 #include <libavcodec/avcodec.h>
@@ -35,8 +37,10 @@
 #include <libavutil/mem.h>
 
 struct buffer_data {
-    uint8_t *ptr;
-    size_t size; ///< size left in the buffer
+    uint8_t *start;  ///< start of the buffer
+    uint8_t *ptr;    ///< current position in the buffer
+    size_t size;     ///< size left in the buffer
+    size_t total;    ///< size of the whole buffer
 };
 
 static int read_packet(void *opaque, uint8_t *buf, int buf_size)
@@ -54,6 +58,37 @@ static int read_packet(void *opaque, uint8_t *buf, int buf_size)
     bd->size -= buf_size;
 
     return buf_size;
+}
+
+static int64_t seek_buffer(void *opaque, int64_t offset, int whence)
+{
+    struct buffer_data *bd = (struct buffer_data *)opaque;
+    int64_t pos;
+
+    switch (whence & ~AVSEEK_FORCE) {
+    case AVSEEK_SIZE:
+        /* libavformat asks for the size of the data without moving */
+        return bd->total;
+    case SEEK_SET:
+        pos = offset;
+        break;
+    case SEEK_CUR:
+        pos = (bd->ptr - bd->start) + offset;
+        break;
+    case SEEK_END:
+        pos = bd->total + offset;
+        break;
+    default:
+        return AVERROR(EINVAL);
+    }
+
+    if (pos < 0 || pos > (int64_t)bd->total)
+        return AVERROR(EINVAL);
+
+    bd->ptr  = bd->start + pos;
+    bd->size = bd->total - pos;
+
+    return pos;
 }
 
 int main(int argc, char *argv[])
@@ -80,8 +115,8 @@ int main(int argc, char *argv[])
         goto end;
 
     /* fill opaque structure used by the AVIOContext read callback */
-    bd.ptr  = buffer;
-    bd.size = buffer_size;
+    bd.start = bd.ptr = buffer;
+    bd.size  = bd.total = buffer_size;
 
     if (!(fmt_ctx = avformat_alloc_context())) {
         ret = AVERROR(ENOMEM);
@@ -94,7 +129,7 @@ int main(int argc, char *argv[])
         goto end;
     }
     avio_ctx = avio_alloc_context(avio_ctx_buffer, avio_ctx_buffer_size,
-                                  0, &bd, &read_packet, NULL, NULL);
+                                  0, &bd, &read_packet, NULL, &seek_buffer);
     if (!avio_ctx) {
         av_freep(&avio_ctx_buffer);
         ret = AVERROR(ENOMEM);
