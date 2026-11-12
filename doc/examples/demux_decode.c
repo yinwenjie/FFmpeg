@@ -84,6 +84,10 @@ static int output_video_frame(AVFrame *frame)
 
     /* write to rawvideo file */
     fwrite(video_dst_data[0], 1, video_dst_bufsize, video_dst_file);
+    if (ferror(video_dst_file)) {
+        fprintf(stderr, "Error writing to %s\n", video_dst_filename);
+        return AVERROR(EIO);
+    }
     return 0;
 }
 
@@ -110,6 +114,10 @@ static int output_audio_frame(AVFrame *frame)
                 fwrite(frame->extended_data[ch] + bps * i, 1, bps, audio_dst_file);
     } else {
         fwrite(frame->extended_data[0], bps * channels, frame->nb_samples, audio_dst_file);
+    }
+    if (ferror(audio_dst_file)) {
+        fprintf(stderr, "Error writing to %s\n", audio_dst_filename);
+        return AVERROR(EIO);
     }
 
     return 0;
@@ -347,6 +355,27 @@ int main (int argc, char **argv)
         goto end;
     if (audio_stream && (ret = decode_packet(audio_dec_ctx, NULL)) < 0)
         goto end;
+
+    /* close the output files here: the data still buffered is written now,
+     * which can fail as well */
+    if (video_dst_file) {
+        ret = fclose(video_dst_file);
+        video_dst_file = NULL;
+        if (ret == EOF) {
+            fprintf(stderr, "Error writing to %s\n", video_dst_filename);
+            ret = AVERROR(EIO);
+            goto end;
+        }
+    }
+    if (audio_dst_file) {
+        ret = fclose(audio_dst_file);
+        audio_dst_file = NULL;
+        if (ret == EOF) {
+            fprintf(stderr, "Error writing to %s\n", audio_dst_filename);
+            ret = AVERROR(EIO);
+            goto end;
+        }
+    }
 
     printf("Demuxing succeeded.\n");
 
