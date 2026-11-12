@@ -151,7 +151,7 @@ int main(int argc, char **argv)
     int i, j, k, ret;
     FILE *f;
     uint16_t *samples;
-    float t, tincr;
+    double t, tincr;
 
     if (argc <= 1) {
         fprintf(stderr, "Usage: %s <output file>\n", argv[0]);
