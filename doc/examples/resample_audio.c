@@ -196,8 +196,18 @@ int main(int argc, char **argv)
             goto end;
         }
         printf("t:%f in:%d out:%d\n", t, src_nb_samples, ret);
-        fwrite(dst_data[0], 1, dst_bufsize, dst_file);
+        if (fwrite(dst_data[0], 1, dst_bufsize, dst_file) != dst_bufsize) {
+            fprintf(stderr, "Error writing to %s\n", dst_filename);
+            ret = AVERROR(EIO);
+            goto end;
+        }
     } while (t < 10);
+
+    if (fflush(dst_file)) {
+        fprintf(stderr, "Error writing to %s\n", dst_filename);
+        ret = AVERROR(EIO);
+        goto end;
+    }
 
     if ((ret = get_format_from_sample_fmt(&fmt, dst_sample_fmt)) < 0)
         goto end;
