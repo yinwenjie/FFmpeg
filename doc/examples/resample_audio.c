@@ -205,26 +205,24 @@ int main(int argc, char **argv)
 
     /* flush the resampler: the samples it still holds are returned when
      * swr_convert() is called without input */
-    do {
-        ret = swr_convert(swr_ctx, dst_data, max_dst_nb_samples, NULL, 0);
-        if (ret < 0) {
-            fprintf(stderr, "Error while converting\n");
-            goto end;
-        }
+    while ((ret = swr_convert(swr_ctx, dst_data, max_dst_nb_samples, NULL, 0)) > 0) {
         dst_bufsize = av_samples_get_buffer_size(&dst_linesize, dst_nb_channels,
                                                  ret, dst_sample_fmt, 1);
         if (dst_bufsize < 0) {
             fprintf(stderr, "Could not get sample buffer size\n");
             goto end;
         }
-        if (ret > 0)
-            printf("flush out:%d\n", ret);
+        printf("flush out:%d\n", ret);
         if (fwrite(dst_data[0], 1, dst_bufsize, dst_file) != dst_bufsize) {
             fprintf(stderr, "Error writing to %s\n", dst_filename);
             ret = AVERROR(EIO);
             goto end;
         }
-    } while (ret > 0);
+    }
+    if (ret < 0) {
+        fprintf(stderr, "Error while converting\n");
+        goto end;
+    }
 
     if (fflush(dst_file)) {
         fprintf(stderr, "Error writing to %s\n", dst_filename);
