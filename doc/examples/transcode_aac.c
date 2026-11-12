@@ -944,5 +944,5 @@ cleanup:
     if (input_format_context)
         avformat_close_input(&input_format_context);
 
-    return ret;
+    return ret ? 1 : 0;
 }
