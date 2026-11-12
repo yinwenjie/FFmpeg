@@ -78,7 +78,11 @@ static int open_input_file(const char *filename)
     dec_ctx = avcodec_alloc_context3(dec);
     if (!dec_ctx)
         return AVERROR(ENOMEM);
-    avcodec_parameters_to_context(dec_ctx, fmt_ctx->streams[video_stream_index]->codecpar);
+    ret = avcodec_parameters_to_context(dec_ctx, fmt_ctx->streams[video_stream_index]->codecpar);
+    if (ret < 0) {
+        av_log(NULL, AV_LOG_ERROR, "Cannot copy the stream parameters to the decoder\n");
+        return ret;
+    }
 
     /* init the video decoder */
     if ((ret = avcodec_open2(dec_ctx, dec, NULL)) < 0) {
