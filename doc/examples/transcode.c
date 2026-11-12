@@ -263,7 +263,7 @@ static int open_output_file(const char *filename)
     if (!(ofmt_ctx->oformat->flags & AVFMT_NOFILE)) {
         ret = avio_open(&ofmt_ctx->pb, filename, AVIO_FLAG_WRITE);
         if (ret < 0) {
-            av_log(NULL, AV_LOG_ERROR, "Could not open output file '%s'", filename);
+            av_log(NULL, AV_LOG_ERROR, "Could not open output file '%s'\n", filename);
             return ret;
         }
     }
