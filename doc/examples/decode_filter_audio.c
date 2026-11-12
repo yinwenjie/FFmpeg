@@ -212,7 +212,7 @@ end:
     return ret;
 }
 
-static void print_frame(const AVFrame *frame)
+static int print_frame(const AVFrame *frame)
 {
     const int n = frame->nb_samples * frame->ch_layout.nb_channels;
     const uint16_t *p     = (uint16_t*)frame->data[0];
@@ -224,6 +224,11 @@ static void print_frame(const AVFrame *frame)
         p++;
     }
     fflush(stdout);
+    if (ferror(stdout)) {
+        av_log(NULL, AV_LOG_ERROR, "Error while writing the filtered audio\n");
+        return AVERROR(EIO);
+    }
+    return 0;
 }
 
 int main(int argc, char **argv)
@@ -287,8 +292,10 @@ int main(int argc, char **argv)
                             break;
                         if (ret < 0)
                             goto end;
-                        print_frame(filt_frame);
+                        ret = print_frame(filt_frame);
                         av_frame_unref(filt_frame);
+                        if (ret < 0)
+                            goto end;
                     }
                     av_frame_unref(frame);
                 }
@@ -315,8 +322,10 @@ int main(int argc, char **argv)
                 break;
             if (ret < 0)
                 goto end;
-            print_frame(filt_frame);
+            ret = print_frame(filt_frame);
             av_frame_unref(filt_frame);
+            if (ret < 0)
+                goto end;
         }
     }
 
