@@ -31,6 +31,7 @@
  * surfaces.
  */
 
+#include <errno.h>
 #include <stdio.h>
 
 #include <libavcodec/avcodec.h>
@@ -160,7 +161,7 @@ int main(int argc, char *argv[])
 
     if (argc < 4) {
         fprintf(stderr, "Usage: %s <device type> <input file> <output file>\n", argv[0]);
-        return -1;
+        return 1;
     }
 
     type = av_hwdevice_find_type_by_name(argv[1]);
@@ -170,31 +171,33 @@ int main(int argc, char *argv[])
         while((type = av_hwdevice_iterate_types(type)) != AV_HWDEVICE_TYPE_NONE)
             fprintf(stderr, " %s", av_hwdevice_get_type_name(type));
         fprintf(stderr, "\n");
-        return -1;
+        return 1;
     }
 
     packet = av_packet_alloc();
     if (!packet) {
         fprintf(stderr, "Failed to allocate AVPacket\n");
-        return -1;
+        return 1;
     }
 
     /* open the input file */
-    if (avformat_open_input(&input_ctx, argv[2], NULL, NULL) != 0) {
-        fprintf(stderr, "Cannot open input file '%s'\n", argv[2]);
-        return -1;
+    ret = avformat_open_input(&input_ctx, argv[2], NULL, NULL);
+    if (ret < 0) {
+        fprintf(stderr, "Cannot open input file '%s': %s\n", argv[2], av_err2str(ret));
+        goto end;
     }
 
-    if (avformat_find_stream_info(input_ctx, NULL) < 0) {
+    ret = avformat_find_stream_info(input_ctx, NULL);
+    if (ret < 0) {
         fprintf(stderr, "Cannot find input stream information.\n");
-        return -1;
+        goto end;
     }
 
     /* find the video stream information */
     ret = av_find_best_stream(input_ctx, AVMEDIA_TYPE_VIDEO, -1, -1, &decoder, 0);
     if (ret < 0) {
         fprintf(stderr, "Cannot find a video stream in the input file\n");
-        return -1;
+        goto end;
     }
     video_stream = ret;
 
@@ -203,7 +206,8 @@ int main(int argc, char *argv[])
         if (!config) {
             fprintf(stderr, "Decoder %s does not support device type %s.\n",
                     decoder->name, av_hwdevice_get_type_name(type));
-            return -1;
+            ret = AVERROR(ENOSYS);
+            goto end;
         }
         if (config->methods & AV_CODEC_HW_CONFIG_METHOD_HW_DEVICE_CTX &&
             config->device_type == type) {
@@ -212,30 +216,32 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (!(decoder_ctx = avcodec_alloc_context3(decoder)))
-        return AVERROR(ENOMEM);
+    if (!(decoder_ctx = avcodec_alloc_context3(decoder))) {
+        ret = AVERROR(ENOMEM);
+        goto end;
+    }
 
     video = input_ctx->streams[video_stream];
-    if (avcodec_parameters_to_context(decoder_ctx, video->codecpar) < 0) {
-        avcodec_free_context(&decoder_ctx);
-        return -1;
-    }
+    ret = avcodec_parameters_to_context(decoder_ctx, video->codecpar);
+    if (ret < 0)
+        goto end;
 
     decoder_ctx->get_format  = get_hw_format;
 
-    if (hw_decoder_init(decoder_ctx, type) < 0)
-        return -1;
+    if ((ret = hw_decoder_init(decoder_ctx, type)) < 0)
+        goto end;
 
     if ((ret = avcodec_open2(decoder_ctx, decoder, NULL)) < 0) {
         fprintf(stderr, "Failed to open codec for stream #%u\n", video_stream);
-        return -1;
+        goto end;
     }
 
     /* open the file to dump raw data */
     output_file = fopen(argv[3], "w+b");
     if (!output_file) {
         fprintf(stderr, "Cannot open output file '%s'\n", argv[3]);
-        return -1;
+        ret = AVERROR(errno);
+        goto end;
     }
 
     /* actual decoding and dump the raw data */
@@ -248,16 +254,22 @@ int main(int argc, char *argv[])
 
         av_packet_unref(packet);
     }
+    if (ret == AVERROR_EOF)
+        ret = 0;
 
     /* flush the decoder */
-    ret = decode_write(decoder_ctx, NULL);
+    if (ret >= 0)
+        ret = decode_write(decoder_ctx, NULL);
 
-    if (output_file)
-        fclose(output_file);
+end:
+    if (output_file && fclose(output_file) && ret >= 0) {
+        fprintf(stderr, "Failed to write the output file\n");
+        ret = AVERROR(EIO);
+    }
     av_packet_free(&packet);
     avcodec_free_context(&decoder_ctx);
     avformat_close_input(&input_ctx);
     av_buffer_unref(&hw_device_ctx);
 
-    return 0;
+    return ret < 0 ? 1 : 0;
 }
