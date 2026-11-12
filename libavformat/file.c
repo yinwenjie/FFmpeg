@@ -238,7 +238,12 @@ static int fd_check(URLContext *h, int mask)
 static int file_close(URLContext *h)
 {
     FileContext *c = h->priv_data;
-    int ret = close(c->fd);
+    int ret;
+
+    /* A directory opened with file_open_dir() has no file descriptor. */
+    if (c->fd < 0)
+        return 0;
+    ret = close(c->fd);
     return (ret == -1) ? AVERROR(errno) : 0;
 }
 
@@ -357,6 +362,7 @@ static int file_open_dir(URLContext *h)
 
     av_strstart(filename, "file:", &filename);
 
+    c->fd = -1;
     c->dir = opendir(filename);
     if (!c->dir)
         return AVERROR(errno);
