@@ -122,6 +122,11 @@ static int decode_write(AVCodecContext *avctx, AVPacket *packet)
 
         size = av_image_get_buffer_size(tmp_frame->format, tmp_frame->width,
                                         tmp_frame->height, 1);
+        if (size < 0) {
+            fprintf(stderr, "Can not get the size of the frame\n");
+            ret = size;
+            goto fail;
+        }
         buffer = av_malloc(size);
         if (!buffer) {
             fprintf(stderr, "Can not alloc buffer\n");
@@ -137,9 +142,9 @@ static int decode_write(AVCodecContext *avctx, AVPacket *packet)
             goto fail;
         }
 
-        if (fwrite(buffer, 1, size, output_file) != size) {
+        if (fwrite(buffer, 1, size, output_file) != (size_t)size) {
             fprintf(stderr, "Failed to dump raw data.\n");
-            ret = -1;
+            ret = AVERROR(EIO);
             goto fail;
         }
 
