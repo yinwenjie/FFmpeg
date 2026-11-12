@@ -52,7 +52,7 @@ static void fill_yuv_image(uint8_t *data[4], int linesize[4],
 
 int main(int argc, char **argv)
 {
-    uint8_t *src_data[4], *dst_data[4];
+    uint8_t *src_data[4] = { NULL }, *dst_data[4] = { NULL };
     int src_linesize[4], dst_linesize[4];
     int src_w = 320, src_h = 240, dst_w, dst_h;
     enum AVPixelFormat src_pix_fmt = AV_PIX_FMT_YUV420P, dst_pix_fmt = AV_PIX_FMT_RGB24;
