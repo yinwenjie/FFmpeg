@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
 
     if (argc < 5) {
         fprintf(stderr, "Usage: %s <width> <height> <input file> <output file>\n", argv[0]);
-        return -1;
+        return 1;
     }
 
     width  = atoi(argv[1]);
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
 
     if (!(fin = fopen(argv[3], "rb"))) {
         fprintf(stderr, "Fail to open input file : %s\n", strerror(errno));
-        return -1;
+        return 1;
     }
     if (!(fout = fopen(argv[4], "w+b"))) {
         fprintf(stderr, "Fail to open output file : %s\n", strerror(errno));
@@ -244,5 +244,5 @@ close:
     avcodec_free_context(&avctx);
     av_buffer_unref(&hw_device_ctx);
 
-    return err;
+    return err < 0 ? 1 : 0;
 }
