@@ -640,7 +640,11 @@ int main(int argc, char **argv)
         }
     }
 
-    av_write_trailer(oc);
+    ret = av_write_trailer(oc);
+    if (ret < 0) {
+        fprintf(stderr, "Error writing the trailer: %s\n", av_err2str(ret));
+        return 1;
+    }
 
     /* Close each codec. */
     if (have_video)
@@ -648,9 +652,15 @@ int main(int argc, char **argv)
     if (have_audio)
         close_stream(oc, &audio_st);
 
-    if (!(fmt->flags & AVFMT_NOFILE))
+    if (!(fmt->flags & AVFMT_NOFILE)) {
         /* Close the output file. */
-        avio_closep(&oc->pb);
+        ret = avio_closep(&oc->pb);
+        if (ret < 0) {
+            fprintf(stderr, "Error closing '%s': %s\n", filename,
+                    av_err2str(ret));
+            return 1;
+        }
+    }
 
     /* free the stream */
     avformat_free_context(oc);
