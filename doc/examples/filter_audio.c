@@ -71,8 +71,8 @@ static int init_filter_graph(AVFilterGraph **graph, AVFilterContext **src,
     const AVFilter  *abuffersink;
 
     AVDictionary *options_dict = NULL;
-    uint8_t options_str[1024];
-    uint8_t ch_layout[64];
+    char options_str[1024];
+    char ch_layout[64];
 
     int err;
 
