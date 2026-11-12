@@ -189,7 +189,8 @@ static void add_stream(OutputStream *ost, AVFormatContext *oc,
         break;
     }
 
-    case AVMEDIA_TYPE_VIDEO:
+    case AVMEDIA_TYPE_VIDEO: {
+        const enum AVPixelFormat *pix_fmts = NULL;
         c->codec_id = codec_id;
 
         c->bit_rate = 400000;
@@ -209,6 +210,21 @@ static void add_stream(OutputStream *ost, AVFormatContext *oc,
 
         c->gop_size      = 12; /* emit one intra frame every twelve frames at most */
         c->pix_fmt       = STREAM_PIX_FMT;
+        ret = avcodec_get_supported_config(c, NULL, AV_CODEC_CONFIG_PIX_FORMAT,
+                                           0, (const void **)&pix_fmts, NULL);
+        if (ret < 0) {
+            fprintf(stderr, "Failed to get supported pixel formats\n");
+            exit(1);
+        }
+        if (pix_fmts) {
+            /* use the first format of the encoder if it does not support
+             * the default one; the picture is converted in that case */
+            c->pix_fmt = pix_fmts[0];
+            for (; *pix_fmts != AV_PIX_FMT_NONE; pix_fmts++) {
+                if (*pix_fmts == STREAM_PIX_FMT)
+                    c->pix_fmt = STREAM_PIX_FMT;
+            }
+        }
         if (c->codec_id == AV_CODEC_ID_MPEG2VIDEO) {
             /* just for testing, we also add B-frames */
             c->max_b_frames = 2;
@@ -220,6 +236,7 @@ static void add_stream(OutputStream *ost, AVFormatContext *oc,
             c->mb_decision = 2;
         }
         break;
+    }
 
     default:
         break;
