@@ -353,8 +353,11 @@ static int file_open_dir(URLContext *h)
 {
 #if HAVE_LSTAT
     FileContext *c = h->priv_data;
+    const char *filename = h->filename;
 
-    c->dir = opendir(h->filename);
+    av_strstart(filename, "file:", &filename);
+
+    c->dir = opendir(filename);
     if (!c->dir)
         return AVERROR(errno);
 
@@ -368,8 +371,11 @@ static int file_read_dir(URLContext *h, AVIODirEntry **next)
 {
 #if HAVE_LSTAT
     FileContext *c = h->priv_data;
+    const char *filename = h->filename;
     struct dirent *dir;
     char *fullpath = NULL;
+
+    av_strstart(filename, "file:", &filename);
 
     *next = ff_alloc_dir_entry();
     if (!*next)
@@ -383,7 +389,7 @@ static int file_read_dir(URLContext *h, AVIODirEntry **next)
         }
     } while (!strcmp(dir->d_name, ".") || !strcmp(dir->d_name, ".."));
 
-    fullpath = av_append_path_component(h->filename, dir->d_name);
+    fullpath = av_append_path_component(filename, dir->d_name);
     if (fullpath) {
         struct stat st;
         if (!lstat(fullpath, &st)) {
