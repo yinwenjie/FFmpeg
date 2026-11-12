@@ -95,10 +95,10 @@ static int select_channel_layout(const AVCodec *codec, AVChannelLayout *dst)
         fprintf(stderr, "Error getting supported channel layouts\n");
         exit(1);
     }
-    const AVChannelLayout *p = out_config, *best_ch_layout;
+    const AVChannelLayout *p = out_config, *best_ch_layout = NULL;
     int best_nb_channels   = 0;
 
-    if (!p)
+    if (!p || !p->nb_channels)
         return av_channel_layout_copy(dst, &(AVChannelLayout)AV_CHANNEL_LAYOUT_STEREO);
 
     while (p->nb_channels) {
