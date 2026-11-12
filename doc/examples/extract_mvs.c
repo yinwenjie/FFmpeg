@@ -191,6 +191,13 @@ int main(int argc, char **argv)
     /* flush cached frames */
     decode_packet(NULL);
 
+    /* the motion vectors are the result of this program, so make sure
+     * that they were actually written */
+    if (ret >= 0 && (fflush(stdout) == EOF || ferror(stdout))) {
+        fprintf(stderr, "Error writing to the standard output\n");
+        ret = AVERROR(EIO);
+    }
+
 end:
     avcodec_free_context(&video_dec_ctx);
     avformat_close_input(&fmt_ctx);
