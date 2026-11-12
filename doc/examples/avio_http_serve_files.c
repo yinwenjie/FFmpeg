@@ -50,10 +50,20 @@ static void process_client(AVIOContext *client, const char *in_uri)
     if (ret < 0)
         goto end;
     av_log(client, AV_LOG_TRACE, "resource=%s\n", resource ? resource : "(none)");
+    reply_code = AVERROR_HTTP_NOT_FOUND;
     if (resource && resource[0] == '/' && !strcmp((resource + 1), in_uri)) {
-        reply_code = 200;
-    } else {
-        reply_code = AVERROR_HTTP_NOT_FOUND;
+        // The reply code is sent before any data, so open the input first
+        // and report a file that cannot be opened instead of sending an
+        // empty "200 OK" reply.
+        fprintf(stderr, "Opening input file.\n");
+        if ((ret = avio_open2(&input, in_uri, AVIO_FLAG_READ, NULL, NULL)) < 0) {
+            av_log(NULL, AV_LOG_ERROR, "Failed to open input: %s: %s.\n",
+                   in_uri, av_err2str(ret));
+            reply_code = ret == AVERROR(ENOENT) ? AVERROR_HTTP_NOT_FOUND
+                                                : AVERROR_HTTP_SERVER_ERROR;
+        } else {
+            reply_code = 200;
+        }
     }
     if ((ret = av_opt_set_int(client, "reply_code", reply_code, AV_OPT_SEARCH_CHILDREN)) < 0) {
         av_log(client, AV_LOG_ERROR, "Failed to set reply_code: %s.\n", av_err2str(ret));
@@ -69,12 +79,6 @@ static void process_client(AVIOContext *client, const char *in_uri)
     fprintf(stderr, "Handshake performed.\n");
     if (reply_code != 200)
         goto end;
-    fprintf(stderr, "Opening input file.\n");
-    if ((ret = avio_open2(&input, in_uri, AVIO_FLAG_READ, NULL, NULL)) < 0) {
-        av_log(input, AV_LOG_ERROR, "Failed to open input: %s: %s.\n", in_uri,
-               av_err2str(ret));
-        goto end;
-    }
     for(;;) {
         n = avio_read(input, buf, sizeof(buf));
         if (n < 0) {
