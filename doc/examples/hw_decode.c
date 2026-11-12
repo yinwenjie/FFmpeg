@@ -53,10 +53,14 @@ static int hw_decoder_init(AVCodecContext *ctx, const enum AVHWDeviceType type)
 
     if ((err = av_hwdevice_ctx_create(&hw_device_ctx, type,
                                       NULL, NULL, 0)) < 0) {
-        fprintf(stderr, "Failed to create specified HW device.\n");
+        fprintf(stderr, "Failed to create specified HW device: %s\n"
+                "Raise the log level (av_log_set_level(AV_LOG_VERBOSE)) to see "
+                "the reason reported by the hardware backend.\n", av_err2str(err));
         return err;
     }
     ctx->hw_device_ctx = av_buffer_ref(hw_device_ctx);
+    if (!ctx->hw_device_ctx)
+        return AVERROR(ENOMEM);
 
     return err;
 }
