@@ -249,6 +249,9 @@ int main(int argc, char **argv)
                 samples[c->ch_layout.nb_channels*j + k] = samples[c->ch_layout.nb_channels*j];
             t += tincr;
         }
+        /* the timestamp is in time_base units, which defaults to
+         * 1 / sample_rate for audio encoders */
+        frame->pts = (int64_t)i * c->frame_size;
         encode(c, frame, pkt, f);
     }
 
