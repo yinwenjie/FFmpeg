@@ -61,7 +61,7 @@ static int check_sample_fmt(const AVCodec *codec, enum AVSampleFormat sample_fmt
     return 0;
 }
 
-/* just pick the highest supported samplerate */
+/* pick the supported samplerate closest to 44100 Hz */
 static int select_sample_rate(const AVCodec *codec)
 {
     const void *out_config;
