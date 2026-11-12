@@ -92,7 +92,7 @@ static int output_audio_frame(AVFrame *frame)
     size_t unpadded_linesize = frame->nb_samples * av_get_bytes_per_sample(frame->format);
     printf("audio_frame n:%d nb_samples:%d pts:%s\n",
            audio_frame_count++, frame->nb_samples,
-           av_ts2timestr(frame->pts, &audio_dec_ctx->time_base));
+           av_ts2timestr(frame->pts, &audio_stream->time_base));
 
     /* Write the raw audio data samples of the first plane. This works
      * fine for packed formats (e.g. AV_SAMPLE_FMT_S16). However,
