@@ -34,6 +34,7 @@
 #include <libavcodec/avcodec.h>
 #include <libavutil/pixdesc.h>
 #include <libavutil/hwcontext.h>
+#include <libavutil/imgutils.h>
 
 static int width, height;
 static AVBufferRef *hw_device_ctx = NULL;
@@ -102,6 +103,9 @@ end:
 int main(int argc, char *argv[])
 {
     int size, err;
+    uint8_t *in_buf = NULL;
+    uint8_t *in_data[4];
+    int in_linesize[4];
     FILE *fin = NULL, *fout = NULL;
     AVFrame *sw_frame = NULL, *hw_frame = NULL;
     AVCodecContext *avctx = NULL;
@@ -115,7 +119,11 @@ int main(int argc, char *argv[])
 
     width  = atoi(argv[1]);
     height = atoi(argv[2]);
-    size   = width * height;
+    size   = av_image_get_buffer_size(AV_PIX_FMT_NV12, width, height, 1);
+    if (size <= 0) {
+        fprintf(stderr, "Invalid frame size %dx%d\n", width, height);
+        return 1;
+    }
 
     if (!(fin = fopen(argv[3], "rb"))) {
         fprintf(stderr, "Fail to open input file : %s\n", strerror(errno));
@@ -163,6 +171,13 @@ int main(int argc, char *argv[])
         goto close;
     }
 
+    /* the input file holds packed NV12 frames: lines are exactly "width" bytes long */
+    if (!(in_buf = av_malloc(size))) {
+        err = AVERROR(ENOMEM);
+        goto close;
+    }
+    av_image_fill_arrays(in_data, in_linesize, in_buf, AV_PIX_FMT_NV12, width, height, 1);
+
     while (1) {
         if (!(sw_frame = av_frame_alloc())) {
             err = AVERROR(ENOMEM);
@@ -174,10 +189,15 @@ int main(int argc, char *argv[])
         sw_frame->format = AV_PIX_FMT_NV12;
         if ((err = av_frame_get_buffer(sw_frame, 0)) < 0)
             goto close;
-        if ((err = fread((uint8_t*)(sw_frame->data[0]), size, 1, fin)) <= 0)
+        /* the lines of an AVFrame are padded to a multiple of the alignment
+         * chosen by av_frame_get_buffer(), so read the whole frame and copy it
+         * line by line instead of reading straight into the planes */
+        if (fread(in_buf, size, 1, fin) != 1) {
+            err = ferror(fin) ? AVERROR(EIO) : 0;
             break;
-        if ((err = fread((uint8_t*)(sw_frame->data[1]), size/2, 1, fin)) <= 0)
-            break;
+        }
+        av_image_copy2(sw_frame->data, sw_frame->linesize, in_data, in_linesize,
+                       AV_PIX_FMT_NV12, width, height);
 
         if (!(hw_frame = av_frame_alloc())) {
             err = AVERROR(ENOMEM);
@@ -206,16 +226,19 @@ int main(int argc, char *argv[])
         av_frame_free(&sw_frame);
     }
 
-    /* flush encoder */
-    err = encode_write(avctx, NULL, fout);
-    if (err == AVERROR_EOF)
-        err = 0;
+    /* flush encoder (unless reading the input failed) */
+    if (err >= 0) {
+        err = encode_write(avctx, NULL, fout);
+        if (err == AVERROR_EOF)
+            err = 0;
+    }
 
 close:
     if (fin)
         fclose(fin);
     if (fout)
         fclose(fout);
+    av_freep(&in_buf);
     av_frame_free(&sw_frame);
     av_frame_free(&hw_frame);
     avcodec_free_context(&avctx);
