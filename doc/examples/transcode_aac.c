@@ -256,6 +256,35 @@ cleanup:
 }
 
 /**
+ * Copy the metadata of the input file and of its audio stream (title, artist,
+ * language, ...) to the output file, and the dispositions of the stream.
+ * This has to be done before the header of the output file is written.
+ * @param input_format_context  Format context of the input file
+ * @param input_stream_index    Index of the audio stream in the input file
+ * @param output_format_context Format context of the output file
+ * @return Error code (0 if successful)
+ */
+static int copy_metadata(const AVFormatContext *input_format_context,
+                         int input_stream_index,
+                         AVFormatContext *output_format_context)
+{
+    const AVStream *input_stream = input_format_context->streams[input_stream_index];
+    AVStream *output_stream      = output_format_context->streams[0];
+    int error;
+
+    if ((error = av_dict_copy(&output_format_context->metadata,
+                              input_format_context->metadata, 0)) < 0 ||
+        (error = av_dict_copy(&output_stream->metadata,
+                              input_stream->metadata, 0)) < 0) {
+        fprintf(stderr, "Could not copy metadata (error '%s')\n",
+                av_err2str(error));
+        return error;
+    }
+    output_stream->disposition = input_stream->disposition;
+    return 0;
+}
+
+/**
  * Initialize one data packet for reading or writing.
  * @param[out] packet Packet to be initialized
  * @return Error code (0 if successful)
@@ -826,6 +855,10 @@ int main(int argc, char **argv)
     /* Open the output file for writing. */
     if (open_output_file(argv[2], input_codec_context,
                          &output_format_context, &output_codec_context))
+        goto cleanup;
+    /* Copy the metadata (title, artist, ...) of the input file. */
+    if (copy_metadata(input_format_context, input_stream_index,
+                      output_format_context))
         goto cleanup;
     /* Initialize the resampler to be able to convert audio sample formats. */
     if (init_resampler(input_codec_context, output_codec_context,
