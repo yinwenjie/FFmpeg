@@ -67,7 +67,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "Usage: %s output_file output_size\n"
                 "API example program to show how to scale an image with libswscale.\n"
                 "This program generates a series of pictures, rescales them to the given "
-                "output_size and saves them to an output file named output_file\n."
+                "output_size and saves them to an output file named output_file.\n"
                 "\n", argv[0]);
         exit(1);
     }
