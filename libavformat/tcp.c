@@ -263,6 +263,9 @@ static int tcp_accept(URLContext *s, URLContext **c)
         return ret;
     }
     cc->fd = ret;
+    /* The socket is open and has to be closed even if the caller never
+     * performs a handshake, which tcp does not need. */
+    (*c)->is_connected = 1;
     return 0;
 }
 

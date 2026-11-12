@@ -893,6 +893,10 @@ static int http_accept(URLContext *s, URLContext **c)
         goto fail;
     cc->hd = cl;
     cc->is_multi_client = 1;
+    /* The connection to the client is open and has to be closed even if the
+     * caller never completes the handshake, for instance in a process that
+     * only passes the client on to another one. */
+    (*c)->is_connected = 1;
     return 0;
 fail:
     if (c) {
@@ -2309,8 +2313,11 @@ static int http_close(URLContext *h)
 #endif /* CONFIG_ZLIB */
 
     /* The listening context of a multi-client server has no connection of
-     * its own, and writing to a listening socket never completes. */
-    if (s->hd && !s->end_chunked_post && s->listen != HTTP_MUTLI)
+     * its own, and writing to a listening socket never completes. A client
+     * that has not finished the handshake has not been sent a reply, so it
+     * must not be sent the end of a chunked body either. */
+    if (s->hd && !s->end_chunked_post && s->listen != HTTP_MUTLI &&
+        (!s->is_multi_client || s->handshake_step == FINISH))
         /* Close the write direction by sending the end of chunked encoding. */
         ret = http_shutdown(h, h->flags);
 
