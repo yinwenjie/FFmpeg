@@ -25,7 +25,7 @@
  * @example demux_decode.c
  *
  * Show how to use the libavformat and libavcodec API to demux and decode audio
- * and video data. Write the output as raw audio and input files to be played by
+ * and video data. Write the output as raw audio and video files to be played by
  * ffplay.
  */
 
