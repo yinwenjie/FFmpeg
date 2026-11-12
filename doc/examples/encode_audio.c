@@ -136,7 +136,10 @@ static void encode(AVCodecContext *ctx, AVFrame *frame, AVPacket *pkt,
             exit(1);
         }
 
-        fwrite(pkt->data, 1, pkt->size, output);
+        if (fwrite(pkt->data, 1, pkt->size, output) != pkt->size) {
+            fprintf(stderr, "Error writing the encoded data\n");
+            exit(1);
+        }
         av_packet_unref(pkt);
     }
 }
@@ -252,7 +255,10 @@ int main(int argc, char **argv)
     /* flush the encoder */
     encode(c, NULL, pkt, f);
 
-    fclose(f);
+    if (fclose(f)) {
+        fprintf(stderr, "Error writing %s\n", filename);
+        exit(1);
+    }
 
     av_frame_free(&frame);
     av_packet_free(&pkt);
