@@ -37,9 +37,10 @@ static void process_client(AVIOContext *client, const char *in_uri)
     AVIOContext *input = NULL;
     uint8_t buf[1024];
     int ret, n, reply_code;
-    uint8_t *resource = NULL;
+    char *resource = NULL;
     while ((ret = avio_handshake(client)) > 0) {
-        av_opt_get(client, "resource", AV_OPT_SEARCH_CHILDREN, &resource);
+        av_opt_get(client, "resource", AV_OPT_SEARCH_CHILDREN,
+                   (uint8_t **)&resource);
         // check for strlen(resource) is necessary, because av_opt_get()
         // may return empty string.
         if (resource && strlen(resource))
