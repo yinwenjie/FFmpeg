@@ -228,7 +228,7 @@ static void print_frame(const AVFrame *frame)
 
 int main(int argc, char **argv)
 {
-    int ret;
+    int ret, eof;
     AVPacket *packet = av_packet_alloc();
     AVFrame *frame = av_frame_alloc();
     AVFrame *filt_frame = av_frame_alloc();
@@ -249,17 +249,21 @@ int main(int argc, char **argv)
 
     /* read all packets */
     while (1) {
-        if ((ret = av_read_frame(fmt_ctx, packet)) < 0)
+        ret = av_read_frame(fmt_ctx, packet);
+        if (ret < 0 && ret != AVERROR_EOF)
             break;
+        /* at the end of the file the packet is empty; sending an empty
+         * packet makes the decoder output the frames it still holds */
+        eof = ret == AVERROR_EOF;
 
-        if (packet->stream_index == audio_stream_index) {
+        if (eof || packet->stream_index == audio_stream_index) {
             ret = avcodec_send_packet(dec_ctx, packet);
             if (ret < 0) {
                 av_log(NULL, AV_LOG_ERROR, "Error while sending a packet to the decoder\n");
                 break;
             }
 
-            while (ret >= 0) {
+            while (1) {
                 ret = avcodec_receive_frame(dec_ctx, frame);
                 if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
                     break;
@@ -291,6 +295,10 @@ int main(int argc, char **argv)
             }
         }
         av_packet_unref(packet);
+        if (eof) {
+            ret = AVERROR_EOF;
+            break;
+        }
     }
     if (ret == AVERROR_EOF) {
         /* signal EOF to the filtergraph */
