@@ -158,7 +158,7 @@ int main(int argc, char **argv)
 
     if (!video_stream) {
         fprintf(stderr, "Could not find video stream in the input, aborting\n");
-        ret = 1;
+        ret = AVERROR_STREAM_NOT_FOUND;
         goto end;
     }
 
