@@ -268,9 +268,10 @@ int main(int argc, char **argv)
                 frame->pts = frame->best_effort_timestamp;
 
                 /* push the decoded frame into the filtergraph */
-                if (av_buffersrc_add_frame_flags(buffersrc_ctx, frame, AV_BUFFERSRC_FLAG_KEEP_REF) < 0) {
+                ret = av_buffersrc_add_frame_flags(buffersrc_ctx, frame, AV_BUFFERSRC_FLAG_KEEP_REF);
+                if (ret < 0) {
                     av_log(NULL, AV_LOG_ERROR, "Error while feeding the filtergraph\n");
-                    break;
+                    goto end;
                 }
 
                 /* pull filtered frames from the filtergraph */
@@ -290,7 +291,8 @@ int main(int argc, char **argv)
     }
     if (ret == AVERROR_EOF) {
         /* signal EOF to the filtergraph */
-        if (av_buffersrc_add_frame_flags(buffersrc_ctx, NULL, 0) < 0) {
+        ret = av_buffersrc_add_frame_flags(buffersrc_ctx, NULL, 0);
+        if (ret < 0) {
             av_log(NULL, AV_LOG_ERROR, "Error while closing the filtergraph\n");
             goto end;
         }
