@@ -203,6 +203,10 @@ static void add_stream(OutputStream *ost, AVFormatContext *oc,
         ost->st->time_base = (AVRational){ 1, STREAM_FRAME_RATE };
         c->time_base       = ost->st->time_base;
 
+        /* The frames sent to the encoder carry a duration, which the
+         * encoder should pass on to the packets it outputs. */
+        c->flags |= AV_CODEC_FLAG_FRAME_DURATION;
+
         c->gop_size      = 12; /* emit one intra frame every twelve frames at most */
         c->pix_fmt       = STREAM_PIX_FMT;
         if (c->codec_id == AV_CODEC_ID_MPEG2VIDEO) {
@@ -520,7 +524,8 @@ static AVFrame *get_video_frame(OutputStream *ost)
         fill_yuv_image(ost->frame, ost->next_pts, c->width, c->height);
     }
 
-    ost->frame->pts = ost->next_pts++;
+    ost->frame->pts      = ost->next_pts++;
+    ost->frame->duration = 1;
 
     return ost->frame;
 }
