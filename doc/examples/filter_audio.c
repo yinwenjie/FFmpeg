@@ -349,6 +349,28 @@ int main(int argc, char *argv[])
         }
     }
 
+    /* Signal the end of the input and get the samples
+     * that are still buffered in the filtergraph. */
+    err = av_buffersrc_add_frame(src, NULL);
+    if (err < 0) {
+        fprintf(stderr, "Error flushing the filtergraph:");
+        goto fail;
+    }
+
+    while ((err = av_buffersink_get_frame(sink, frame)) >= 0) {
+        err = process_output(md5, frame);
+        if (err < 0) {
+            fprintf(stderr, "Error processing the filtered frame:");
+            goto fail;
+        }
+        av_frame_unref(frame);
+    }
+
+    if (err != AVERROR_EOF) {
+        fprintf(stderr, "Error filtering the data:");
+        goto fail;
+    }
+
     avfilter_graph_free(&graph);
     av_frame_free(&frame);
     av_freep(&md5);
