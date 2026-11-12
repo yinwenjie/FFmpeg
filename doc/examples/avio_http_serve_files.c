@@ -30,6 +30,7 @@
 
 #include <libavformat/avformat.h>
 #include <libavutil/opt.h>
+#include <signal.h>
 #include <unistd.h>
 
 static void process_client(AVIOContext *client, const char *in_uri)
@@ -120,6 +121,10 @@ int main(int argc, char **argv)
 
     avformat_network_init();
 
+    // The children are never waited for. Ignoring SIGCHLD makes the system
+    // reap them when they exit, so that they do not stay behind as zombies.
+    signal(SIGCHLD, SIG_IGN);
+
     if ((ret = av_dict_set(&options, "listen", "2", 0)) < 0) {
         fprintf(stderr, "Failed to set listen mode for server: %s\n", av_err2str(ret));
         return ret;
@@ -133,8 +138,6 @@ int main(int argc, char **argv)
         if ((ret = avio_accept(server, &client)) < 0)
             goto end;
         fprintf(stderr, "Accepted client, forking process.\n");
-        // XXX: Since we don't reap our children and don't ignore signals
-        //      this produces zombie processes.
         pid = fork();
         if (pid < 0) {
             perror("Fork failed");
