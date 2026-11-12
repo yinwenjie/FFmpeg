@@ -82,6 +82,8 @@ static int init_filter_graph(AVFilterGraph **graph, AVFilterContext **src,
         fprintf(stderr, "Unable to create filter graph.\n");
         return AVERROR(ENOMEM);
     }
+    /* The caller frees the graph, also when this function fails. */
+    *graph = filter_graph;
 
     /* Create the abuffer filter;
      * it will be used for feeding the data into the graph. */
@@ -200,7 +202,6 @@ static int init_filter_graph(AVFilterGraph **graph, AVFilterContext **src,
         return err;
     }
 
-    *graph = filter_graph;
     *src   = abuffer_ctx;
     *sink  = abuffersink_ctx;
 
