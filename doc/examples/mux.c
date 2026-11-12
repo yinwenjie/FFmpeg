@@ -235,6 +235,11 @@ static void add_stream(OutputStream *ost, AVFormatContext *oc,
              * the motion of the chroma plane does not match the luma plane. */
             c->mb_decision = 2;
         }
+        if (c->codec_id == AV_CODEC_ID_MJPEG) {
+            /* The MJPEG encoder only accepts full range YUV, which is what
+             * the generated picture uses anyway. */
+            c->color_range = AVCOL_RANGE_JPEG;
+        }
         break;
     }
 
