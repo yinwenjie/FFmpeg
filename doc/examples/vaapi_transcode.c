@@ -92,6 +92,11 @@ static int open_input_file(const char *filename)
         return ret;
     }
 
+    /* the timestamps of the decoded frames are in the time base of the stream,
+     * and the frame rate is needed below to set up the encoder */
+    decoder_ctx->pkt_timebase = video->time_base;
+    decoder_ctx->framerate    = av_guess_frame_rate(ifmt_ctx, video, NULL);
+
     decoder_ctx->hw_device_ctx = av_buffer_ref(hw_device_ctx);
     if (!decoder_ctx->hw_device_ctx) {
         fprintf(stderr, "A hardware device reference create failed.\n");
@@ -122,7 +127,11 @@ static int encode_write(AVPacket *enc_pkt, AVFrame *frame)
             break;
 
         enc_pkt->stream_index = 0;
-        av_packet_rescale_ts(enc_pkt, ifmt_ctx->streams[video_stream]->time_base,
+        /* the encoder does not set the duration of the packets: one frame
+         * lasts one tick of the encoder time base (1 / frame rate) */
+        if (enc_pkt->duration <= 0)
+            enc_pkt->duration = 1;
+        av_packet_rescale_ts(enc_pkt, encoder_ctx->time_base,
                              ofmt_ctx->streams[0]->time_base);
         ret = av_interleaved_write_frame(ofmt_ctx, enc_pkt);
         if (ret < 0) {
@@ -175,6 +184,7 @@ static int dec_enc(AVPacket *pkt, const AVCodec *enc_codec)
              * the same as decoder.
              * xxx: now the sample can't handle resolution change case.
              */
+            encoder_ctx->framerate = decoder_ctx->framerate;
             encoder_ctx->time_base = av_inv_q(decoder_ctx->framerate);
             encoder_ctx->pix_fmt   = AV_PIX_FMT_VAAPI;
             encoder_ctx->width     = decoder_ctx->width;
@@ -209,6 +219,12 @@ static int dec_enc(AVPacket *pkt, const AVCodec *enc_codec)
 
             initialized = 1;
         }
+
+        /* the encoder expects timestamps in its own time base */
+        frame->pts      = av_rescale_q(frame->pts, decoder_ctx->pkt_timebase,
+                                       encoder_ctx->time_base);
+        frame->duration = av_rescale_q(frame->duration, decoder_ctx->pkt_timebase,
+                                       encoder_ctx->time_base);
 
         if ((ret = encode_write(pkt, frame)) < 0)
             fprintf(stderr, "Error during encoding and writing.\n");
